@@ -1,0 +1,6 @@
+{
+  "name": "Cake N Crave - Homemade 100% Eggless Cakes & Gifts",
+  "description": "Boutique homemade 100% eggless cakes, bento cakes, hampers, flower & chocolate bouquets in Jaipur. Handcrafted with love for your sweetest celebrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
