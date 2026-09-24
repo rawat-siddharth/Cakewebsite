@@ -9,10 +9,12 @@ import {
   AlertCircle,
   HelpCircle,
   Database,
-  Key
+  Key,
+  Globe,
+  CheckCircle2
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY, updateSupabaseCredentials } from '../../lib/supabase';
 
 export function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -20,6 +22,10 @@ export function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showConnectSupabase, setShowConnectSupabase] = useState(false);
+  const [inputUrl, setInputUrl] = useState(SUPABASE_URL || '');
+  const [inputKey, setInputKey] = useState(SUPABASE_ANON_KEY || '');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const { signIn, isAdmin } = useAdminAuth();
   const navigate = useNavigate();
@@ -29,6 +35,21 @@ export function AdminLogin() {
   if (isAdmin) {
     navigate('/admin', { replace: true });
   }
+
+  const configured = isSupabaseConfigured();
+
+  const handleSaveSupabase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputUrl || !inputKey) {
+      setErrorMessage('Please enter both Supabase Project URL and Anon Key.');
+      return;
+    }
+    updateSupabaseCredentials(inputUrl, inputKey);
+    setSaveSuccess(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +71,28 @@ export function AdminLogin() {
     }
   };
 
-  const configured = isSupabaseConfigured();
+  const handleQuickFillSandbox = () => {
+    setEmail('admin@cakencrave.com');
+    setPassword('JaipurCakes@2026');
+    setErrorMessage(null);
+  };
+
+  const handleOneClickSandboxLogin = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const result = await signIn('admin@cakencrave.com', 'JaipurCakes@2026');
+      if (result.success) {
+        navigate('/admin', { replace: true });
+      } else {
+        setErrorMessage(result.error || 'Failed to sign in');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-[#2A1810]">
@@ -75,16 +117,114 @@ export function AdminLogin() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-[#F3DFE5] shadow-sm space-y-6">
           
-          {/* Status Badge */}
-          <div className="flex items-center justify-between text-[11px] p-2.5 rounded-2xl bg-[#FFF5F7] border border-[#F3DFE5]">
-            <span className="flex items-center gap-1.5 text-[#2A1810]/80">
-              <Database className="w-3.5 h-3.5 text-[#D83A6F]" />
-              <span>Auth Backend:</span>
-            </span>
-            <span className="font-semibold text-[#D83A6F]">
-              {configured ? 'Supabase Auth & RLS' : 'Sandbox (Setup Guide Below)'}
-            </span>
+          {/* Status Badge & Supabase Connection Toggle */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] p-2.5 rounded-2xl bg-[#FFF5F7] border border-[#F3DFE5]">
+              <span className="flex items-center gap-1.5 text-[#2A1810]/80">
+                <Database className="w-3.5 h-3.5 text-[#D83A6F]" />
+                <span>Auth Backend:</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <span className={`font-semibold ${configured ? 'text-emerald-700' : 'text-[#D83A6F]'}`}>
+                  {configured ? 'Supabase Connected' : 'Sandbox Mode'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowConnectSupabase(!showConnectSupabase)}
+                  className="text-[10px] uppercase font-bold text-[#D83A6F] underline cursor-pointer"
+                >
+                  {showConnectSupabase ? 'Hide' : 'Connect Supabase'}
+                </button>
+              </div>
+            </div>
+
+            {/* Direct Supabase Project Connection Form */}
+            {showConnectSupabase && (
+              <form onSubmit={handleSaveSupabase} className="p-4 bg-white border border-[#F3DFE5] rounded-2xl space-y-3 shadow-xs animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#2A1810]">Supabase Credentials</span>
+                  {configured && (
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                      ✓ Configured
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#2A1810]/70 leading-relaxed">
+                  Enter your project API keys from your Supabase Dashboard (<strong>Project Settings &rarr; API</strong>).
+                </p>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2A1810] mb-1 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-[#D83A6F]" />
+                    <span>Project URL</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={inputUrl}
+                    onChange={(e) => setInputUrl(e.target.value)}
+                    placeholder="https://your-project.supabase.co"
+                    className="w-full px-3 py-2 text-xs font-mono bg-[#FFFDFB] border border-[#F3DFE5] rounded-xl text-[#2A1810] focus:outline-hidden focus:border-[#D83A6F]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2A1810] mb-1 flex items-center gap-1">
+                    <Key className="w-3 h-3 text-[#D83A6F]" />
+                    <span>Public Anon Key</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
+                    placeholder="eyJhbGciOi..."
+                    className="w-full px-3 py-2 text-xs font-mono bg-[#FFFDFB] border border-[#F3DFE5] rounded-xl text-[#2A1810] focus:outline-hidden focus:border-[#D83A6F]"
+                  />
+                </div>
+
+                <div className="pt-1 flex items-center justify-between">
+                  {saveSuccess ? (
+                    <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Saved! Reloading...
+                    </span>
+                  ) : <span />}
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#D83A6F] hover:bg-[#C42B5E] text-white text-xs font-semibold rounded-xl cursor-pointer shadow-2xs"
+                  >
+                    Save & Connect Supabase
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
+
+          {!configured && (
+            <div className="p-3.5 bg-[#FFF0F4] border border-[#FCE3E9] rounded-2xl text-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#2A1810] text-xs">Sandbox Admin Credentials</span>
+                <button
+                  type="button"
+                  onClick={handleQuickFillSandbox}
+                  className="text-[11px] font-bold text-[#D83A6F] hover:underline cursor-pointer"
+                >
+                  Auto-Fill Details
+                </button>
+              </div>
+              <div className="text-[11px] text-[#2A1810]/75 space-y-0.5 font-mono">
+                <div>Email: <strong className="text-[#D83A6F]">admin@cakencrave.com</strong></div>
+                <div>Password: <strong className="text-[#D83A6F]">JaipurCakes@2026</strong></div>
+              </div>
+              <button
+                type="button"
+                onClick={handleOneClickSandboxLogin}
+                className="w-full py-2 px-3 bg-white hover:bg-[#FFF5F7] border border-[#F3DFE5] text-[#D83A6F] text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>⚡ 1-Click Instant Sign In</span>
+              </button>
+            </div>
+          )}
 
           {errorMessage && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in">

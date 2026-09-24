@@ -449,15 +449,6 @@ export function Header() {
                 <MessageCircle className="w-3.5 h-3.5 fill-current" />
                 <span>WhatsApp Baker</span>
               </a>
-
-              <Link
-                to="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="mt-1 px-4 py-2 rounded-xl text-xs font-semibold text-[#2A1810]/75 hover:text-[#D83A6F] bg-[#FFF0F4] border border-[#F3DFE5] text-center flex items-center justify-center gap-1.5"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#D83A6F]" />
-                <span>Admin Management Portal</span>
-              </Link>
             </div>
           </div>
         </div>
