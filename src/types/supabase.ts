@@ -20,8 +20,8 @@ export interface DatabaseProduct {
   flavourTag?: string;
   description: string | null;
   price: number;
-  weight_prices?: Record<string, number> | null;
-  weightPrices?: Record<string, number>;
+  weight_prices?: Record<string, any> | null;
+  weightPrices?: Record<string, any>;
   images: string[];
   featured: boolean;
   is_new?: boolean;

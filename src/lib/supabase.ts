@@ -203,6 +203,10 @@ export async function saveProduct(product: Partial<DatabaseProduct> & { name: st
     available_flavours: product.available_flavours || [],
     customization_options: product.customization_options || [],
     advance_order_notice: product.advance_order_notice || 'Please order at least 24 hours in advance',
+    flavourOptions: product.flavourOptions || product.available_flavours || [],
+    weightOptions: product.weightOptions || product.available_sizes || [],
+    flavourCombinationPricing: product.flavourCombinationPricing || (product as any).flavour_combination_pricing || undefined,
+    addOns: product.addOns || [],
     updated_at: new Date().toISOString(),
   };
 

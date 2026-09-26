@@ -56,68 +56,111 @@ export function getMaxFlavoursForWeight(product: Product, weight: string): numbe
  * Returns the price if configured, or null if no explicit combination price exists.
  */
 export function getFlavourCombinationPrice(
-  product: Product,
+  product: Product | any,
   weight: string,
   flavours: string[]
 ): number | null {
-  if (!product || flavours.length === 0 || !weight) {
+  if (!product || !weight || !flavours || flavours.length === 0) {
     return null;
   }
 
   const normalizedComboKey = normalizeFlavourKey(flavours);
   const normalizedWeight = normalizeWeightString(weight);
+  const firstFlavour = flavours[0]?.trim() || '';
 
   // 1. Check flavourCombinationPricing in product
-  if (product.flavourCombinationPricing) {
-    // Find matching weight entry in pricing
+  if (product.flavourCombinationPricing && typeof product.flavourCombinationPricing === 'object') {
+    // 1A. By Weight first: flavourCombinationPricing[weight][flavour]
     let weightPricingMap: Record<string, number> | undefined = undefined;
 
     if (product.flavourCombinationPricing[weight]) {
       weightPricingMap = product.flavourCombinationPricing[weight];
     } else {
       for (const [wKey, map] of Object.entries(product.flavourCombinationPricing)) {
-        if (normalizeWeightString(wKey) === normalizedWeight) {
-          weightPricingMap = map;
+        if (normalizeWeightString(wKey) === normalizedWeight && typeof map === 'object' && map !== null) {
+          weightPricingMap = map as Record<string, number>;
           break;
         }
       }
     }
 
     if (weightPricingMap) {
-      // Look up exact match
       if (typeof weightPricingMap[normalizedComboKey] === 'number') {
         return weightPricingMap[normalizedComboKey];
       }
-
-      // Check all keys in weightPricingMap normalized
+      if (typeof weightPricingMap[firstFlavour] === 'number') {
+        return weightPricingMap[firstFlavour];
+      }
       for (const [comboKey, price] of Object.entries(weightPricingMap)) {
         const keyNorm = normalizeFlavourKey(comboKey.split('+').map((s) => s.trim()));
-        if (keyNorm === normalizedComboKey) {
+        if (keyNorm === normalizedComboKey || keyNorm === normalizeFlavourKey([firstFlavour])) {
+          return price;
+        }
+      }
+    }
+
+    // 1B. By Flavour first: flavourCombinationPricing[flavour][weight]
+    const flavourMap = product.flavourCombinationPricing[firstFlavour] ||
+      product.flavourCombinationPricing[normalizedComboKey];
+    if (flavourMap && typeof flavourMap === 'object') {
+      if (typeof flavourMap[weight] === 'number') return flavourMap[weight];
+      for (const [wKey, price] of Object.entries(flavourMap)) {
+        if (normalizeWeightString(wKey) === normalizedWeight && typeof price === 'number') {
           return price;
         }
       }
     }
   }
 
-  // 2. If single flavour and no multi-flavour map matched, fallback to weightPrices or product.price
-  if (flavours.length === 1) {
-    if (product.weightPrices) {
-      if (typeof product.weightPrices[weight] === 'number') {
-        return product.weightPrices[weight];
-      }
-      for (const [wKey, price] of Object.entries(product.weightPrices)) {
-        if (normalizeWeightString(wKey) === normalizedWeight) {
-          return price;
+  // 2. Check weight_prices._flavour_matrix or weight_prices._flavour_pricing
+  const wp = product.weight_prices || product.weightPrices;
+  if (wp && typeof wp === 'object') {
+    // 2A. Check _flavour_matrix[flavour][weight]
+    if (wp._flavour_matrix && typeof wp._flavour_matrix === 'object') {
+      const fMap = wp._flavour_matrix[firstFlavour] || wp._flavour_matrix[normalizedComboKey];
+      if (fMap && typeof fMap === 'object') {
+        if (typeof fMap[weight] === 'number') return fMap[weight];
+        for (const [wKey, price] of Object.entries(fMap)) {
+          if (normalizeWeightString(wKey) === normalizedWeight && typeof price === 'number') {
+            return price;
+          }
         }
       }
     }
 
-    if (product.price) {
-      return product.price;
+    // 2B. Check _flavour_pricing.byWeight[weight][flavour]
+    if (wp._flavour_pricing) {
+      const byWeight = wp._flavour_pricing.byWeight || wp._flavour_pricing;
+      if (byWeight && typeof byWeight === 'object') {
+        const wMap = byWeight[weight];
+        if (wMap && typeof wMap[firstFlavour] === 'number') return wMap[firstFlavour];
+        if (wMap && typeof wMap[normalizedComboKey] === 'number') return wMap[normalizedComboKey];
+      }
+      const byFlavour = wp._flavour_pricing.byFlavour;
+      if (byFlavour && typeof byFlavour === 'object') {
+        const fMap = byFlavour[firstFlavour] || byFlavour[normalizedComboKey];
+        if (fMap && typeof fMap[weight] === 'number') return fMap[weight];
+      }
     }
   }
 
-  // If combination is not found, return null (never silently guess)
+  // 3. Fallback to weightPrices / weight_prices per size
+  if (wp) {
+    if (typeof wp[weight] === 'number') {
+      return wp[weight];
+    }
+    for (const [wKey, price] of Object.entries(wp)) {
+      if (normalizeWeightString(wKey) === normalizedWeight && typeof price === 'number') {
+        return price;
+      }
+    }
+  }
+
+  // 4. Fallback to base product price
+  if (typeof product.price === 'number' && product.price > 0) {
+    return product.price;
+  }
+
   return null;
 }
 

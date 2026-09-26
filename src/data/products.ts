@@ -24,8 +24,8 @@ export interface Product {
   is_available?: boolean;
   flavourTag?: string;
   flavour_tag?: string;
-  weightPrices?: Record<string, number>;
-  weight_prices?: Record<string, number>;
+  weightPrices?: Record<string, any>;
+  weight_prices?: Record<string, any>;
   occasions: string[];
   availableSizes?: string[];
   available_sizes?: string[];
@@ -767,6 +767,55 @@ export const PRODUCTS: Product[] = [
   },
 
   // --- HAMPERS ---
+  {
+    id: 'hamper-birthday-premium',
+    slug: 'birthday-premium-hamper',
+    name: 'Birthday Premium Hamper',
+    category: 'Hampers',
+    description: 'An exquisite celebratory hamper curated for memorable birthdays. Features eggless mini bakes, artisan cupcakes, rich Belgian chocolates, and customizable gift wrapping.',
+    price: 699,
+    weightOptions: ['Small', 'Medium', 'Large'],
+    availableSizes: ['Small', 'Medium', 'Large'],
+    weightPrices: {
+      Small: 699,
+      Medium: 999,
+      Large: 1499,
+      _contents: {
+        mode: 'by_package',
+        byPackage: {
+          Small: [
+            { name: 'Mini Cake', quantity: 1, variant: 'Belgian Truffle', notes: 'Pure Eggless' },
+            { name: 'Cupcakes', quantity: 2, variant: 'Assorted' },
+            { name: 'Chocolates', quantity: 2, variant: 'Artisan Rochers' },
+          ],
+          Medium: [
+            { name: 'Mini Cake', quantity: 1, variant: 'Belgian Truffle', notes: 'Pure Eggless' },
+            { name: 'Cupcakes', quantity: 4, variant: 'Assorted' },
+            { name: 'Brownies', quantity: 2, variant: 'Fudgy Walnut' },
+            { name: 'Chocolates', quantity: 4, variant: 'Artisan Rochers' },
+            { name: 'Greeting Card', quantity: 1, notes: 'Handwritten with Wax Seal' },
+          ],
+          Large: [
+            { name: 'Bento Cake', quantity: 1, variant: 'Belgian Truffle', notes: 'Pure Eggless' },
+            { name: 'Cupcakes', quantity: 6, variant: 'Assorted' },
+            { name: 'Brownies', quantity: 4, variant: 'Fudgy Walnut' },
+            { name: 'Chocolates', quantity: 6, variant: 'Artisan Rochers' },
+            { name: 'Greeting Card', quantity: 1, notes: 'Handwritten with Wax Seal' },
+          ],
+        },
+      },
+    },
+    images: [
+      '/src/assets/images/gourmet_gift_hamper_1790174308010.jpg',
+      '/src/assets/images/hero_cake_display_1790174282202.jpg',
+    ],
+    featured: true,
+    isNew: true,
+    occasions: ['Birthday', 'For Girlfriend'],
+    flavourTag: 'Premium Hamper',
+    customizationOptions: ['Message Card', 'Name', 'Ribbon', 'Colour Theme'],
+    advanceOrderNotice: 'Order 24 hours in advance',
+  },
   {
     id: 'hamper-royal-celebration',
     slug: 'royal-jaipur-celebration-hamper',
