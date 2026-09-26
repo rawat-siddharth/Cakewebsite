@@ -136,7 +136,9 @@ const DEFAULT_DELIVERY_SETTINGS: DatabaseDeliverySettings = {
 // PRODUCT SERVICE
 // ==============================================================================
 export async function getProducts(options?: { onlyPublished?: boolean }): Promise<DatabaseProduct[]> {
+  let dbProducts: DatabaseProduct[] = [];
   const supabase = getSupabase();
+
   if (supabase) {
     try {
       let query = supabase.from('products').select('*').order('created_at', { ascending: false });
@@ -145,44 +147,84 @@ export async function getProducts(options?: { onlyPublished?: boolean }): Promis
       }
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
-        return data as DatabaseProduct[];
+        dbProducts = data.map((item: any) => {
+          const wp = item.weight_prices || {};
+          return {
+            ...item,
+            flavourOptions: item.flavourOptions || wp._flavourOptions || item.available_flavours || [],
+            weightOptions: item.weightOptions || wp._weightOptions || item.available_sizes || [],
+            flavourCombinationPricing: item.flavourCombinationPricing || wp._flavourCombinationPricing || undefined,
+            addOns: item.addOns || wp._addOns || [],
+          } as DatabaseProduct;
+        });
       }
     } catch (err) {
       console.warn('Supabase product fetch failed, falling back to local dataset', err);
     }
   }
 
-  // Fallback to LocalStorage or Default Seed
+  // Get locally cached products
+  let localProducts: DatabaseProduct[] = [];
   if (typeof window !== 'undefined') {
     const cached = localStorage.getItem(LOCAL_PRODUCTS_KEY);
     if (cached) {
       try {
-        const parsed: DatabaseProduct[] = JSON.parse(cached);
-        if (options?.onlyPublished) {
-          return parsed.filter((p) => p.is_published && p.is_available);
-        }
-        return parsed;
+        localProducts = JSON.parse(cached);
       } catch (e) {
-        // ignore parse error
+        localProducts = [];
       }
+    } else {
+      // First time initialization with initial DB seed
+      localProducts = [...INITIAL_DB_PRODUCTS];
+      try {
+        localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(localProducts));
+      } catch (e) {}
     }
+  } else {
+    localProducts = [...INITIAL_DB_PRODUCTS];
+  }
+
+  // If Supabase returned products, merge with local products so that
+  // locally created products or offline changes are NEVER lost
+  let combined: DatabaseProduct[] = [];
+  if (dbProducts.length > 0) {
+    const dbMap = new Map<string, DatabaseProduct>();
+    dbProducts.forEach((p) => dbMap.set(p.id, p));
+
+    const mergedList: DatabaseProduct[] = [...dbProducts];
+    localProducts.forEach((lp) => {
+      const existing = dbMap.get(lp.id);
+      if (!existing) {
+        mergedList.unshift(lp);
+      } else {
+        const localTime = new Date(lp.updated_at || 0).getTime();
+        const dbTime = new Date(existing.updated_at || 0).getTime();
+        if (localTime > dbTime) {
+          const idx = mergedList.findIndex((p) => p.id === lp.id);
+          if (idx >= 0) mergedList[idx] = lp;
+        }
+      }
+    });
+    combined = mergedList;
+  } else {
+    combined = localProducts.length > 0 ? localProducts : INITIAL_DB_PRODUCTS;
   }
 
   if (options?.onlyPublished) {
-    return INITIAL_DB_PRODUCTS.filter((p) => p.is_published && p.is_available);
+    return combined.filter((p) => p.is_published && p.is_available);
   }
-  return INITIAL_DB_PRODUCTS;
+  return combined;
 }
 
 export async function getProductBySlug(slug: string): Promise<DatabaseProduct | null> {
   const products = await getProducts({ onlyPublished: false });
-  return products.find((p) => p.slug === slug) || null;
+  return products.find((p) => p.slug === slug || p.id === slug) || null;
 }
 
 export async function saveProduct(product: Partial<DatabaseProduct> & { name: string }): Promise<DatabaseProduct> {
   const supabase = getSupabase();
   const id = product.id || `cake-${Date.now()}`;
-  const slug = product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = product.slug?.trim() || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `prod-${Date.now()}`;
 
   const payload: DatabaseProduct = {
     id,
@@ -210,31 +252,65 @@ export async function saveProduct(product: Partial<DatabaseProduct> & { name: st
     updated_at: new Date().toISOString(),
   };
 
-  if (supabase) {
+  // 1. ALWAYS persist locally so admin changes & newly created products are immediately available
+  if (typeof window !== 'undefined') {
     try {
-      const { data, error } = await supabase.from('products').upsert(payload).select().single();
-      if (error) {
-        throw error;
+      const current = await getProducts({ onlyPublished: false });
+      const index = current.findIndex((p) => p.id === id);
+      if (index >= 0) {
+        current[index] = payload;
+      } else {
+        current.unshift(payload);
       }
-      if (data) {
-        return data as DatabaseProduct;
-      }
-    } catch (err) {
-      console.error('Failed to save product in Supabase', err);
-      // fallback to saving locally so admin changes are never lost
+      localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(current));
+    } catch (storageErr) {
+      console.warn('LocalStorage save warning:', storageErr);
     }
+
+    // Dispatch global event for instant storefront reactivity across context & components
+    window.dispatchEvent(new CustomEvent('cnc_products_updated', { detail: payload }));
   }
 
-  // Local storage sync
-  if (typeof window !== 'undefined') {
-    const current = await getProducts({ onlyPublished: false });
-    const index = current.findIndex((p) => p.id === id);
-    if (index >= 0) {
-      current[index] = payload;
-    } else {
-      current.unshift(payload);
+  // 2. Sync to Supabase if configured (using exact columns matching PostgreSQL schema)
+  if (supabase) {
+    try {
+      const dbPayload = {
+        id: payload.id,
+        slug: payload.slug,
+        name: payload.name,
+        category: payload.category,
+        flavour_tag: payload.flavour_tag,
+        description: payload.description,
+        price: payload.price,
+        weight_prices: {
+          ...(payload.weight_prices || {}),
+          _flavourOptions: payload.flavourOptions,
+          _weightOptions: payload.weightOptions,
+          _flavourCombinationPricing: payload.flavourCombinationPricing,
+          _addOns: payload.addOns,
+        },
+        images: payload.images,
+        featured: payload.featured,
+        is_new: payload.is_new,
+        is_published: payload.is_published,
+        is_available: payload.is_available,
+        occasions: payload.occasions,
+        available_sizes: payload.available_sizes,
+        available_flavours: payload.available_flavours,
+        customization_options: payload.customization_options,
+        advance_order_notice: payload.advance_order_notice,
+        updated_at: payload.updated_at,
+      };
+
+      const { data, error } = await supabase.from('products').upsert(dbPayload).select().single();
+      if (!error && data) {
+        console.log('Product saved successfully to Supabase:', data.id);
+      } else if (error) {
+        console.warn('Supabase upsert warning (stored in local database):', error);
+      }
+    } catch (err) {
+      console.warn('Failed to save product in Supabase (preserved in local storage)', err);
     }
-    localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(current));
   }
 
   return payload;
@@ -252,9 +328,13 @@ export async function deleteProduct(id: string): Promise<boolean> {
   }
 
   if (typeof window !== 'undefined') {
-    const current = await getProducts({ onlyPublished: false });
-    const filtered = current.filter((p) => p.id !== id);
-    localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(filtered));
+    try {
+      const current = await getProducts({ onlyPublished: false });
+      const filtered = current.filter((p) => p.id !== id);
+      localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(filtered));
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent('cnc_products_updated', { detail: { id, deleted: true } }));
   }
   return true;
 }
@@ -516,37 +596,68 @@ export async function saveDeliverySettings(settings: Partial<DatabaseDeliverySet
 // ==============================================================================
 // STORAGE SERVICE (Product Image Uploads)
 // ==============================================================================
+export async function compressImageToDataUrl(file: File, maxDim = 800, quality = 0.8): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawResult = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(rawResult);
+        }
+      };
+      img.onerror = () => resolve(rawResult);
+      img.src = rawResult;
+    };
+    reader.onerror = () => resolve('/src/assets/images/hero_cake_display_1790174282202.jpg');
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadProductImage(file: File): Promise<string> {
   const supabase = getSupabase();
   if (!supabase) {
-    // Return a base64 data URL preview for local dev if Supabase is not yet configured
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+    // Return compressed lightweight data URL preview for offline/local storage
+    return compressImageToDataUrl(file);
   }
 
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
   const filePath = `products/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('product-images')
-    .upload(filePath, file, { cacheControl: '3600', upsert: false });
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
-  if (uploadError) {
-    console.error('Storage upload failed', uploadError);
-    // Fallback to FileReader data url if bucket is not yet provisioned
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+    if (!uploadError) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch (err) {
+    console.warn('Storage upload error, falling back to local compressed preview', err);
   }
 
-  const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);
-  return data.publicUrl;
+  // Fallback to compressed data url if bucket is not yet provisioned or upload failed
+  return compressImageToDataUrl(file);
 }
 
 // ==============================================================================

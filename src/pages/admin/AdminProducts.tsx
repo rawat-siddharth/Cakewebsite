@@ -755,10 +755,15 @@ export function AdminProducts() {
         };
       }
 
+      const baseSlug = formData.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
+      const targetSlug = formData.id
+        ? (formData.slug.trim() || baseSlug)
+        : (products.some((p) => p.slug === baseSlug) ? `${baseSlug}-${Date.now().toString().slice(-4)}` : baseSlug);
+
       const payload: Partial<DatabaseProduct> & { name: string } = {
         id: formData.id || undefined,
         name: formData.name.trim(),
-        slug: formData.slug.trim() || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        slug: targetSlug,
         category: formData.category,
         description: formData.description.trim(),
         price: startingPrice,
@@ -784,6 +789,23 @@ export function AdminProducts() {
       const saved = await saveProduct(payload);
       showToast(`Product "${saved.name}" saved successfully!`);
       setModalOpen(false);
+
+      // Immediately update local Admin state so there is zero delay in seeing the product
+      setProducts((prev) => {
+        const idx = prev.findIndex((p) => p.id === saved.id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = saved;
+          return updated;
+        }
+        return [saved, ...prev];
+      });
+
+      // Clear search query & filter so the new product is visible immediately
+      setSearchQuery('');
+      setSelectedCategory('All');
+      setStatusFilter('All');
+
       await loadData();
     } catch (err: any) {
       console.error('Save failed', err);
@@ -1138,7 +1160,7 @@ export function AdminProducts() {
                         setFormData((prev) => ({
                           ...prev,
                           name: val,
-                          slug: prev.slug || val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+                          slug: editingProduct ? prev.slug : val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
                         }));
                       }}
                       placeholder={isHamper ? "e.g. Birthday Premium Hamper" : "e.g. Belgian Chocolate Truffle Cake"}

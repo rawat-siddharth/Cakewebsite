@@ -70,6 +70,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshStoreData();
+
+    const handleProductsUpdated = () => {
+      refreshStoreData();
+    };
+
+    window.addEventListener('cnc_products_updated', handleProductsUpdated);
+    window.addEventListener('storage', handleProductsUpdated);
+
+    return () => {
+      window.removeEventListener('cnc_products_updated', handleProductsUpdated);
+      window.removeEventListener('storage', handleProductsUpdated);
+    };
   }, [refreshStoreData]);
 
   const featuredProducts = products.filter((p) => p.featured);

@@ -49,12 +49,24 @@ export function ProductDetails() {
   const { addToCart } = useCart();
   const { products: storeProducts } = useStore();
 
-  // Combine with local product data so all options & pricing tables are present
+  // Look up product in store, localStorage, or static dataset
   const localProduct = PRODUCTS.find((p) => p.slug === slug || p.id === slug);
   const storeProduct = storeProducts.find((p) => p.slug === slug || p.id === slug);
-  const rawProduct = localProduct
-    ? { ...storeProduct, ...localProduct }
-    : storeProduct || PRODUCTS[0];
+
+  const cachedProduct = useMemo(() => {
+    if (typeof window !== 'undefined' && slug) {
+      try {
+        const cached = localStorage.getItem('cnc_local_products');
+        if (cached) {
+          const list = JSON.parse(cached);
+          return list.find((p: any) => p.slug === slug || p.id === slug);
+        }
+      } catch (e) {}
+    }
+    return null;
+  }, [slug]);
+
+  const rawProduct = storeProduct || cachedProduct || localProduct || PRODUCTS[0];
 
   const product: Product = {
     ...rawProduct,
