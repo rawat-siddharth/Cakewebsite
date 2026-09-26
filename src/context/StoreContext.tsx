@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   DatabaseProduct,
   DatabaseCategory,
@@ -11,10 +11,12 @@ import {
   getWebsiteSettings,
   getDeliverySettings
 } from '../lib/supabase';
+import { getDynamicHeaderCategories, MainCategory } from '../data/categories';
 
 interface StoreContextType {
   products: DatabaseProduct[];
   categories: DatabaseCategory[];
+  mainCategories: MainCategory[];
   websiteSettings: DatabaseWebsiteSettings;
   deliverySettings: DatabaseDeliverySettings;
   loading: boolean;
@@ -71,18 +73,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshStoreData();
 
-    const handleProductsUpdated = () => {
+    const handleDataUpdated = () => {
       refreshStoreData();
     };
 
-    window.addEventListener('cnc_products_updated', handleProductsUpdated);
-    window.addEventListener('storage', handleProductsUpdated);
+    window.addEventListener('cnc_products_updated', handleDataUpdated);
+    window.addEventListener('cnc_categories_updated', handleDataUpdated);
+    window.addEventListener('cnc_category_master_updated', handleDataUpdated);
+    window.addEventListener('storage', handleDataUpdated);
 
     return () => {
-      window.removeEventListener('cnc_products_updated', handleProductsUpdated);
-      window.removeEventListener('storage', handleProductsUpdated);
+      window.removeEventListener('cnc_products_updated', handleDataUpdated);
+      window.removeEventListener('cnc_categories_updated', handleDataUpdated);
+      window.removeEventListener('cnc_category_master_updated', handleDataUpdated);
+      window.removeEventListener('storage', handleDataUpdated);
     };
   }, [refreshStoreData]);
+
+  const mainCategories = useMemo(() => {
+    return getDynamicHeaderCategories(categories);
+  }, [categories]);
 
   const featuredProducts = products.filter((p) => p.featured);
 
@@ -91,6 +101,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       value={{
         products,
         categories,
+        mainCategories,
         websiteSettings,
         deliverySettings,
         loading,

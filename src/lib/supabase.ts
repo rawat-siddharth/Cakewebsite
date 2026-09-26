@@ -155,6 +155,19 @@ export async function getProducts(options?: { onlyPublished?: boolean }): Promis
             weightOptions: item.weightOptions || wp._weightOptions || item.available_sizes || [],
             flavourCombinationPricing: item.flavourCombinationPricing || wp._flavourCombinationPricing || undefined,
             addOns: item.addOns || wp._addOns || [],
+            show_in_frontend: item.show_in_frontend !== undefined
+              ? item.show_in_frontend
+              : (wp._show_in_frontend !== undefined ? wp._show_in_frontend : (item.is_published !== false)),
+            frontend_options: item.frontend_options || wp._frontend_options || {
+              show_title: true,
+              custom_title: '',
+              show_description: true,
+              custom_description: '',
+              show_image: true,
+              custom_image: '',
+              show_price: true,
+              custom_price: '',
+            },
           } as DatabaseProduct;
         });
       }
@@ -211,7 +224,7 @@ export async function getProducts(options?: { onlyPublished?: boolean }): Promis
   }
 
   if (options?.onlyPublished) {
-    return combined.filter((p) => p.is_published && p.is_available);
+    return combined.filter((p) => (p as any).show_in_frontend !== false && p.is_published && p.is_available);
   }
   return combined;
 }
@@ -226,6 +239,21 @@ export async function saveProduct(product: Partial<DatabaseProduct> & { name: st
   const id = product.id || `cake-${Date.now()}`;
   const slug = product.slug?.trim() || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `prod-${Date.now()}`;
 
+  const show_in_frontend = product.show_in_frontend !== undefined
+    ? product.show_in_frontend
+    : (product.is_published !== false);
+
+  const frontend_options = product.frontend_options || {
+    show_title: true,
+    custom_title: '',
+    show_description: true,
+    custom_description: '',
+    show_image: true,
+    custom_image: '',
+    show_price: true,
+    custom_price: '',
+  };
+
   const payload: DatabaseProduct = {
     id,
     slug,
@@ -238,7 +266,9 @@ export async function saveProduct(product: Partial<DatabaseProduct> & { name: st
     images: product.images && product.images.length > 0 ? product.images : ['/src/assets/images/hero_cake_display_1790174282202.jpg'],
     featured: Boolean(product.featured),
     is_new: Boolean(product.is_new),
-    is_published: product.is_published !== false,
+    is_published: product.is_published !== false && show_in_frontend !== false,
+    show_in_frontend,
+    frontend_options,
     is_available: product.is_available !== false,
     occasions: product.occasions || ['Birthday'],
     available_sizes: product.available_sizes || ['0.5 Kg', '1 Kg'],
@@ -288,6 +318,8 @@ export async function saveProduct(product: Partial<DatabaseProduct> & { name: st
           _weightOptions: payload.weightOptions,
           _flavourCombinationPricing: payload.flavourCombinationPricing,
           _addOns: payload.addOns,
+          _show_in_frontend: payload.show_in_frontend,
+          _frontend_options: payload.frontend_options,
         },
         images: payload.images,
         featured: payload.featured,
@@ -415,6 +447,8 @@ export async function saveCategory(category: Partial<DatabaseCategory> & { name:
       current.push(payload);
     }
     localStorage.setItem(LOCAL_CATEGORIES_KEY, JSON.stringify(current));
+    window.dispatchEvent(new CustomEvent('cnc_categories_updated', { detail: payload }));
+    window.dispatchEvent(new CustomEvent('cnc_category_master_updated', { detail: payload }));
   }
   return payload;
 }
@@ -430,6 +464,8 @@ export async function deleteCategory(id: string): Promise<boolean> {
     const current = await getCategories({ onlyPublished: false });
     const filtered = current.filter((c) => c.id !== id);
     localStorage.setItem(LOCAL_CATEGORIES_KEY, JSON.stringify(filtered));
+    window.dispatchEvent(new CustomEvent('cnc_categories_updated', { detail: { id, deleted: true } }));
+    window.dispatchEvent(new CustomEvent('cnc_category_master_updated', { detail: { id, deleted: true } }));
   }
   return true;
 }

@@ -1,3 +1,6 @@
+import { getAllCategoryConfigs, normalizeCategoryKey, CategoryMasterConfig } from './categorySettings';
+import { DatabaseCategory } from '../types/supabase';
+
 export interface SubCategory {
   id: string;             // e.g. "cakes-birthday", "bento-birthday", "hampers-birthday"
   name: string;           // Displayed name: "Birthday", "Mom-to-Be" (never repeats main category name)
@@ -209,10 +212,125 @@ export const MAIN_CATEGORIES: MainCategory[] = [
   },
 ];
 
+/**
+ * Dynamically resolves main categories and their subcategory options
+ * directly from Admin database and Category Master Settings.
+ */
+export function getDynamicHeaderCategories(
+  dbCategories?: DatabaseCategory[],
+  customConfigs?: Record<string, CategoryMasterConfig>
+): MainCategory[] {
+  let publishedCats: DatabaseCategory[] = [];
+  if (dbCategories && dbCategories.length > 0) {
+    publishedCats = dbCategories.filter((c) => c.is_published !== false);
+  } else if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem('cnc_local_categories');
+      if (cached) {
+        const parsed: DatabaseCategory[] = JSON.parse(cached);
+        publishedCats = parsed.filter((c) => c.is_published !== false);
+      }
+    } catch (e) {}
+  }
+
+  const configs = customConfigs || getAllCategoryConfigs();
+
+  if (!publishedCats || publishedCats.length === 0) {
+    return MAIN_CATEGORIES.map((cat) => {
+      const cfgKey = normalizeCategoryKey(cat.id || cat.slug || cat.name);
+      const cfg = configs[cfgKey] || configs[cat.id];
+      if (cfg && cfg.subcategories && cfg.subcategories.length > 0) {
+        const subList: SubCategory[] = [
+          { id: `${cat.id}-all`, name: `All ${cat.name}`, parentCategory: cat.id, slug: 'all', isAll: true },
+          ...cfg.subcategories.map((subName) => {
+            const existing = cat.subcategories.find((s) => s.name.toLowerCase() === subName.toLowerCase());
+            if (existing) return existing;
+            const slug = subName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            return {
+              id: `${cat.id}-${slug}`,
+              name: subName,
+              parentCategory: cat.id,
+              slug,
+              matchOccasion: [subName],
+              matchKeywords: [subName.toLowerCase()],
+            };
+          }),
+        ];
+        return {
+          ...cat,
+          subcategories: subList,
+        };
+      }
+      return cat;
+    });
+  }
+
+  const sorted = [...publishedCats].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+  return sorted.map((dbCat) => {
+    const defaultMatch = MAIN_CATEGORIES.find(
+      (m) =>
+        m.id.toLowerCase() === dbCat.id.toLowerCase() ||
+        m.slug.toLowerCase() === dbCat.slug.toLowerCase() ||
+        m.name.toLowerCase() === dbCat.name.toLowerCase() ||
+        (m.aliases && m.aliases.some((a) => a.toLowerCase() === dbCat.name.toLowerCase()))
+    );
+
+    const cfgKey = normalizeCategoryKey(dbCat.id || dbCat.slug || dbCat.name);
+    const cfg = configs[cfgKey] || configs[dbCat.id] || configs[dbCat.slug];
+
+    let subList: SubCategory[] = [];
+    if (cfg && cfg.subcategories && cfg.subcategories.length > 0) {
+      subList = [
+        { id: `${dbCat.id}-all`, name: `All ${dbCat.name}`, parentCategory: dbCat.id, slug: 'all', isAll: true },
+        ...cfg.subcategories.map((subName) => {
+          const existing = defaultMatch?.subcategories.find((s) => s.name.toLowerCase() === subName.toLowerCase());
+          if (existing) return { ...existing, parentCategory: dbCat.id };
+          const slug = subName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          return {
+            id: `${dbCat.id}-${slug}`,
+            name: subName,
+            parentCategory: dbCat.id,
+            slug,
+            matchOccasion: [subName],
+            matchKeywords: [subName.toLowerCase()],
+          };
+        }),
+      ];
+    } else if (defaultMatch) {
+      subList = defaultMatch.subcategories;
+    } else {
+      subList = [
+        { id: `${dbCat.id}-all`, name: `All ${dbCat.name}`, parentCategory: dbCat.id, slug: 'all', isAll: true },
+      ];
+    }
+
+    return {
+      id: dbCat.id,
+      name: dbCat.name,
+      slug: dbCat.slug,
+      description: dbCat.description || defaultMatch?.description || `Handcrafted eggless ${dbCat.name} fresh daily in Jaipur.`,
+      image: dbCat.image || defaultMatch?.image || '/src/assets/images/hero_cake_display_1790174282202.jpg',
+      itemCount: dbCat.item_count || defaultMatch?.itemCount || 0,
+      subcategories: subList,
+      aliases: defaultMatch?.aliases || [dbCat.name.toLowerCase()],
+    };
+  });
+}
+
 // Helper functions for easy lookup
-export function getMainCategoryByIdOrSlug(idOrSlug: string): MainCategory | undefined {
+export function getMainCategoryByIdOrSlug(idOrSlug: string, categoriesList?: MainCategory[]): MainCategory | undefined {
   if (!idOrSlug) return undefined;
   const clean = idOrSlug.trim().toLowerCase();
+  const pool = (categoriesList && categoriesList.length > 0) ? categoriesList : getDynamicHeaderCategories();
+  const found = pool.find(
+    (c) =>
+      c.id.toLowerCase() === clean ||
+      c.slug.toLowerCase() === clean ||
+      c.name.toLowerCase() === clean ||
+      (c.aliases && c.aliases.some((a) => a.toLowerCase() === clean))
+  );
+  if (found) return found;
   return MAIN_CATEGORIES.find(
     (c) =>
       c.id.toLowerCase() === clean ||
@@ -222,8 +340,13 @@ export function getMainCategoryByIdOrSlug(idOrSlug: string): MainCategory | unde
   );
 }
 
-export function getSubCategoryById(id: string): SubCategory | undefined {
+export function getSubCategoryById(id: string, categoriesList?: MainCategory[]): SubCategory | undefined {
   if (!id) return undefined;
+  const pool = (categoriesList && categoriesList.length > 0) ? categoriesList : getDynamicHeaderCategories();
+  for (const cat of pool) {
+    const sub = cat.subcategories.find((s) => s.id === id);
+    if (sub) return sub;
+  }
   for (const cat of MAIN_CATEGORIES) {
     const sub = cat.subcategories.find((s) => s.id === id);
     if (sub) return sub;

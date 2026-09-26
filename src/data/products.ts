@@ -5,6 +5,17 @@ export interface CakeAddOn {
   description?: string;
 }
 
+export interface ProductFrontendOptions {
+  show_title: boolean;
+  custom_title?: string;
+  show_description: boolean;
+  custom_description?: string;
+  show_image: boolean;
+  custom_image?: string;
+  show_price: boolean;
+  custom_price?: string;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -20,6 +31,10 @@ export interface Product {
   is_new?: boolean;
   isPublished?: boolean;
   is_published?: boolean;
+  showInFrontend?: boolean;
+  show_in_frontend?: boolean;
+  frontendOptions?: ProductFrontendOptions;
+  frontend_options?: ProductFrontendOptions;
   isAvailable?: boolean;
   is_available?: boolean;
   flavourTag?: string;

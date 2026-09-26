@@ -14,6 +14,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useStore } from '../context/StoreContext';
 import { BAKERY_WHATSAPP_NUMBER } from '../utils/whatsapp';
 import { MAIN_CATEGORIES, MainCategory, SubCategory } from '../data/categories';
 import { ImageWithFallback } from './ImageWithFallback';
@@ -26,6 +27,9 @@ export function Header() {
   const [mobileExpandedCat, setMobileExpandedCat] = useState<string | null>(null);
 
   const { totalCount } = useCart();
+  const { mainCategories } = useStore();
+  const headerCategories = (mainCategories && mainCategories.length > 0) ? mainCategories : MAIN_CATEGORIES;
+
   const navigate = useNavigate();
   const location = useLocation();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +85,7 @@ export function Header() {
     setMobileExpandedCat((prev) => (prev === catId ? null : catId));
   };
 
-  const activeCategoryData = MAIN_CATEGORIES.find((c) => c.id === activeMegaCategory);
+  const activeCategoryData = headerCategories.find((c) => c.id === activeMegaCategory);
 
   return (
     <header
@@ -104,9 +108,9 @@ export function Header() {
             </Link>
           </div>
 
-          {/* Desktop Navigation Links — 9 Main Categories */}
+          {/* Desktop Navigation Links — Dynamic Admin Categories */}
           <nav className="hidden xl:flex items-center space-x-2 2xl:space-x-3.5 text-[13px] 2xl:text-[14px] text-[#2A1810]/90">
-            {MAIN_CATEGORIES.map((category) => {
+            {headerCategories.map((category) => {
               const isActive = activeMegaCategory === category.id;
               return (
                 <div
@@ -373,8 +377,8 @@ export function Header() {
               Home
             </Link>
 
-            {/* 9 Main Categories Accordion */}
-            {MAIN_CATEGORIES.map((cat) => {
+            {/* Dynamic Admin Categories Accordion */}
+            {headerCategories.map((cat) => {
               const isExpanded = mobileExpandedCat === cat.id;
               return (
                 <div key={cat.id} className="border-b border-[#F3DFE5]/60 pb-1">

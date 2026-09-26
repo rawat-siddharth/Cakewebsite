@@ -1,3 +1,14 @@
+export interface ProductFrontendOptions {
+  show_title: boolean;
+  custom_title?: string;
+  show_description: boolean;
+  custom_description?: string;
+  show_image: boolean;
+  custom_image?: string;
+  show_price: boolean;
+  custom_price?: string;
+}
+
 export interface DatabaseCategory {
   id: string;
   name: string;
@@ -28,6 +39,10 @@ export interface DatabaseProduct {
   isNew?: boolean;
   is_published: boolean;
   isPublished?: boolean;
+  show_in_frontend?: boolean;
+  showInFrontend?: boolean;
+  frontend_options?: ProductFrontendOptions;
+  frontendOptions?: ProductFrontendOptions;
   is_available: boolean;
   isAvailable?: boolean;
   occasions?: string[];
