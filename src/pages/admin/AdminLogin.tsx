@@ -107,7 +107,7 @@ export function AdminLogin() {
           <span>Staff & Baker Portal</span>
         </div>
         <h2 className="mt-4 font-serif text-2xl font-bold text-[#2A1810]">
-          Admin Console Sign In
+          Admin Console Sign Inn
         </h2>
         <p className="mt-1 text-xs text-[#2A1810]/60">
           Sign in to manage eggless cakes, prices, categories, and orders.
@@ -116,7 +116,7 @@ export function AdminLogin() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-[#F3DFE5] shadow-sm space-y-6">
-          
+
           {/* Status Badge & Supabase Connection Toggle */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] p-2.5 rounded-2xl bg-[#FFF5F7] border border-[#F3DFE5]">
@@ -312,7 +312,7 @@ export function AdminLogin() {
                   <li>
                     Open <strong>SQL Editor</strong> and execute:
                     <pre className="p-2 mt-1 bg-white border border-[#F3DFE5] rounded-lg text-[10px] font-mono text-[#2A1810] overflow-x-auto">
-{`INSERT INTO public.user_roles (user_id, role)
+                      {`INSERT INTO public.user_roles (user_id, role)
 VALUES ('YOUR_USER_UUID', 'admin');`}
                     </pre>
                   </li>
