@@ -30,6 +30,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Homepage Content', path: '/admin/homepage', icon: Sparkles },
     { name: 'Products', path: '/admin/products', icon: Cake },
     { name: 'Categories', path: '/admin/categories', icon: FolderTree },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },

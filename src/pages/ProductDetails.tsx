@@ -1,21 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { PRODUCTS, Product, CakeAddOn } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { recordPlacedOrder } from '../lib/supabase';
 import { ImageWithFallback } from '../components/ImageWithFallback';
-import {
-  getFlavourCombinationPrice,
-  STANDARD_CAKE_ADDONS,
-} from '../utils/pricing';
-import {
-  generateSingleProductOrderMessage,
-} from '../utils/whatsapp';
-import {
-  extractProductDetails,
-  HamperContentItem,
-} from '../data/categorySettings';
+import { getFlavourCombinationPrice, STANDARD_CAKE_ADDONS } from '../utils/pricing';
+import { extractProductDetails, HamperContentItem } from '../data/categorySettings';
 import {
   MessageCircle,
   ShoppingBag,
@@ -24,27 +15,24 @@ import {
   AlertCircle,
   Heart,
   ChevronRight,
-  ChevronDown,
-  Sparkles,
-  Users,
-  Clock,
-  Plus,
-  Minus,
-  Calendar,
-  FileText,
-  Gift,
-  Package,
-  Layers,
-  Flower2,
-  Cookie,
-  Boxes,
+  Star,
   CheckCircle2,
+  Share2,
+  Calendar,
+  Clock,
+  Sparkles,
+  Gift,
+  FileText,
+  Flame,
+  Award,
+  Tag
 } from 'lucide-react';
 
 const BAKERY_DIRECT_PHONE = '917976541365';
 
 export function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { products: storeProducts } = useStore();
@@ -75,7 +63,7 @@ export function ProductDetails() {
 
   // Extract structured options based on category
   const extracted = useMemo(() => extractProductDetails(product), [product]);
-  const { categoryKey, categoryConfig } = extracted;
+  const { categoryKey } = extracted;
 
   const isHamper = categoryKey === 'hampers';
   const isBento = categoryKey === 'bento-cakes';
@@ -83,24 +71,6 @@ export function ProductDetails() {
   const isBouquet = categoryKey === 'bouquets';
   const isCookie = categoryKey === 'cookies';
   const isCake = categoryKey === 'cakes';
-
-  const weightServingMap: Record<string, string> = {
-    '250g': 'Serves 1-2',
-    '250g (Single Bento)': 'Serves 1-2',
-    '350g': 'Serves 2-3',
-    '350g (Grand Bento)': 'Serves 2-3',
-    '500g': 'Serves 4-6',
-    '0.5 Kg': 'Serves 4-6',
-    '1kg': 'Serves 8-10',
-    '1 Kg': 'Serves 8-10',
-    '1.5kg': 'Serves 12-14',
-    '1.5 Kg': 'Serves 12-14',
-    '2kg': 'Serves 16-20',
-    '2 Kg': 'Serves 16-20',
-    '2.5 Kg': 'Serves 20-24',
-    '3kg': 'Party (25+)',
-    '3 Kg': 'Party (25+)',
-  };
 
   // Available sizes or packages
   const availableSizesList = useMemo(() => {
@@ -113,19 +83,7 @@ export function ProductDetails() {
     return ['Standard'];
   }, [extracted.selectedSizes, product.weightOptions]);
 
-  // States
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [selectedFlavour, setSelectedFlavour] = useState<string>('');
-  const [selectedAddOns, setSelectedAddOns] = useState<CakeAddOn[]>([]);
-  const [chosenCustomizations, setChosenCustomizations] = useState<string[]>([]);
-  const [customMessage, setCustomMessage] = useState<string>('');
-  const [deliveryDate, setDeliveryDate] = useState<string>('');
-  const [specialInstructions, setSpecialInstructions] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [validationError, setValidationError] = useState<string>('');
-  const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
-
+  // Flavours List
   const flavoursList: string[] = useMemo(() => {
     if (isHamper) return [];
     if (extracted.selectedFlavours && extracted.selectedFlavours.length > 0) {
@@ -137,31 +95,26 @@ export function ProductDetails() {
     return (product as any).available_flavours || product.availableFlavours || [];
   }, [extracted.selectedFlavours, isHamper, product]);
 
-  const availableAddOns: CakeAddOn[] = useMemo(() => {
-    if (isHamper) return []; // Hampers use hamper customizations instead
-    if (product?.addOns && product.addOns.length > 0) {
-      return product.addOns;
-    }
-    if (isCake || isBento) {
-      return STANDARD_CAKE_ADDONS;
-    }
-    return [];
-  }, [product, isHamper, isCake, isBento]);
+  const flavorFromUrl = searchParams.get('flavor') || '';
 
-  // Current package contents (for Hampers or products with contents repeater)
-  const currentPackageContents = useMemo<HamperContentItem[]>(() => {
-    if (!isHamper) return [];
-    if (extracted.contentsMode === 'all') {
-      return extracted.contentsByPackage.all || [];
-    }
-    return (
-      extracted.contentsByPackage[selectedSize] ||
-      extracted.contentsByPackage.all ||
-      []
-    );
-  }, [isHamper, extracted.contentsMode, extracted.contentsByPackage, selectedSize]);
+  // COMPONENT STATES
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedFlavour, setSelectedFlavour] = useState<string>('');
+  const [customMessage, setCustomMessage] = useState<string>('');
+  const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [quantity, setQuantity] = useState<number>(1);
+  const [validationError, setValidationError] = useState<string>('');
+  const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const [isWishlisted, setIsWishlisted] = useState<boolean>(false);
 
-  // Initialize defaults when product changes
+  // COMPLIMENTARY ADD-ONS (DALL·E 3 Reference Matched)
+  const [includeCandles, setIncludeCandles] = useState<boolean>(true);
+  const [includeTopper, setIncludeTopper] = useState<boolean>(true);
+  const [topperText, setTopperText] = useState<string>('Happy Birthday');
+  const [includeGiftTag, setIncludeGiftTag] = useState<boolean>(true);
+
+  // Initialize defaults
   useEffect(() => {
     if (product) {
       if (availableSizesList.length > 0) {
@@ -170,67 +123,59 @@ export function ProductDetails() {
         setSelectedSize('');
       }
 
-      if (flavoursList.length > 0) {
+      if (flavorFromUrl && flavoursList.some((f) => f.toLowerCase() === flavorFromUrl.toLowerCase())) {
+        const matched = flavoursList.find((f) => f.toLowerCase() === flavorFromUrl.toLowerCase());
+        setSelectedFlavour(matched || flavoursList[0] || '');
+      } else if (flavoursList.length > 0) {
         setSelectedFlavour(flavoursList[0]);
       } else {
         setSelectedFlavour('');
       }
 
-      // Pre-select popular customizations
-      if (extracted.selectedCustomizations && extracted.selectedCustomizations.length > 0) {
-        setChosenCustomizations([...extracted.selectedCustomizations.slice(0, 2)]);
-      } else {
-        setChosenCustomizations([]);
-      }
-
       setSelectedImageIndex(0);
-      setSelectedAddOns([]);
       setCustomMessage('');
       setDeliveryDate('');
-      setSpecialInstructions('');
       setQuantity(1);
       setValidationError('');
       setAddedSuccess(false);
+
+      // Check wishlist
+      try {
+        const stored = localStorage.getItem('cnc_wishlist');
+        if (stored) {
+          const list = JSON.parse(stored);
+          if (Array.isArray(list) && list.includes(product.id)) {
+            setIsWishlisted(true);
+          }
+        }
+      } catch (e) {}
+
       window.scrollTo(0, 0);
     }
-  }, [product?.id, product?.slug, availableSizesList, flavoursList, extracted.selectedCustomizations]);
+  }, [product?.id, product?.slug, availableSizesList, flavoursList, flavorFromUrl]);
 
-  const handleAddOnToggle = (addOn: CakeAddOn) => {
-    setSelectedAddOns((prev) => {
-      const exists = prev.some((a) => a.id === addOn.id);
-      if (exists) {
-        return prev.filter((a) => a.id !== addOn.id);
+  const toggleWishlist = () => {
+    try {
+      const stored = localStorage.getItem('cnc_wishlist');
+      let list = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(list)) list = [];
+      if (list.includes(product.id)) {
+        list = list.filter((id: string) => id !== product.id);
+        setIsWishlisted(false);
       } else {
-        return [...prev, addOn];
+        list.push(product.id);
+        setIsWishlisted(true);
       }
-    });
+      localStorage.setItem('cnc_wishlist', JSON.stringify(list));
+    } catch (e) {}
   };
 
-  const handleCustomizationToggle = (opt: string) => {
-    setChosenCustomizations((prev) => {
-      if (prev.includes(opt)) {
-        return prev.filter((o) => o !== opt);
-      } else {
-        return [...prev, opt];
-      }
-    });
-  };
-
-  // Dynamic Base Price for selected package / size & flavour
+  // Dynamic Base Price calculation
   const basePrice = useMemo(() => {
     if (!product || !selectedSize) {
       return null;
     }
 
-    // 1. Hampers or non-flavour items: directly use size/package pricing
-    if ((isHamper || isDessert || isBouquet || isCookie) && flavoursList.length === 0) {
-      if (extracted.sizePricing[selectedSize] !== undefined && Number(extracted.sizePricing[selectedSize]) > 0) {
-        return Number(extracted.sizePricing[selectedSize]);
-      }
-      return Number(product.price) || 649;
-    }
-
-    // 2. Cakes / Bento Cakes / Items with flavours: Check flavour combination price FIRST!
     if (selectedFlavour) {
       const comboPrice = getFlavourCombinationPrice(product, selectedSize, [selectedFlavour]);
       if (typeof comboPrice === 'number' && comboPrice > 0) {
@@ -238,7 +183,6 @@ export function ProductDetails() {
       }
     }
 
-    // 3. Fallback to sizePricing if no specific combination price
     if (extracted.sizePricing[selectedSize] !== undefined && Number(extracted.sizePricing[selectedSize]) > 0) {
       return Number(extracted.sizePricing[selectedSize]);
     }
@@ -249,24 +193,10 @@ export function ProductDetails() {
     }
 
     return Number(product.price) || 649;
-  }, [product, selectedSize, selectedFlavour, isHamper, isDessert, isBouquet, isCookie, extracted.sizePricing, flavoursList.length]);
+  }, [product, selectedSize, selectedFlavour, extracted.sizePricing]);
 
-  // Add-ons subtotal
-  const addOnsTotal = useMemo(() => {
-    return selectedAddOns.reduce((sum, item) => sum + item.price, 0);
-  }, [selectedAddOns]);
-
-  // Unit price (Base Price + Add-ons)
-  const currentUnitPrice = useMemo(() => {
-    if (basePrice === null) return null;
-    return basePrice + addOnsTotal;
-  }, [basePrice, addOnsTotal]);
-
-  // Total order item price (Unit price * Quantity)
-  const currentTotalPrice = useMemo(() => {
-    if (currentUnitPrice === null) return null;
-    return currentUnitPrice * quantity;
-  }, [currentUnitPrice, quantity]);
+  const currentUnitPrice = basePrice;
+  const currentTotalPrice = currentUnitPrice !== null ? currentUnitPrice * quantity : null;
 
   // Formatted WhatsApp message
   const formattedOrderMessage = useMemo(() => {
@@ -275,100 +205,53 @@ export function ProductDetails() {
     const lines: string[] = [];
     lines.push(`Hello Cake N Crave! I would like to place an order.`);
     lines.push('');
-    lines.push(`Product: ${product.name}`);
+    lines.push(`*Product:* ${product.name}`);
+    if (selectedSize) lines.push(`*Weight / Size:* ${selectedSize}`);
+    if (selectedFlavour) lines.push(`*Flavor:* ${selectedFlavour}`);
 
-    if (isHamper) {
-      if (extracted.typeValue) lines.push(`Hamper Type: ${extracted.typeValue}`);
-      if (selectedSize) lines.push(`Package: ${selectedSize}`);
-      if (currentPackageContents.length > 0) {
-        lines.push('');
-        lines.push(`Package Contents (${selectedSize}):`);
-        currentPackageContents.forEach((item) => {
-          const variantStr = item.variant ? ` (${item.variant})` : '';
-          lines.push(`• ${item.quantity} × ${item.name}${variantStr}`);
-        });
-      }
-      if (chosenCustomizations.length > 0) {
-        lines.push('');
-        lines.push(`Customizations: ${chosenCustomizations.join(', ')}`);
-      }
-    } else {
-      if (selectedSize) {
-        const sizeLabel = isBento ? 'Bento Size' : isDessert ? 'Pack Size' : isBouquet ? 'Arrangement' : isCookie ? 'Box Size' : 'Weight';
-        lines.push(`${sizeLabel}: ${selectedSize}`);
-      }
-      if (selectedFlavour) {
-        lines.push(`Flavour: ${selectedFlavour}`);
-      }
-      if (chosenCustomizations.length > 0) {
-        lines.push(`Customizations: ${chosenCustomizations.join(', ')}`);
-      }
-      if (selectedAddOns.length > 0) {
-        const addonsStr = selectedAddOns.map((a) => `${a.name} (+₹${a.price})`).join(', ');
-        lines.push(`Add-ons: ${addonsStr}`);
-      }
-    }
+    // Complimentary add-ons
+    const comp: string[] = [];
+    if (includeCandles) comp.push('Free Candles');
+    if (includeTopper) comp.push(`Free Acrylic Topper ("${topperText}")`);
+    if (includeGiftTag) comp.push('Free Handwritten Gift Tag');
+    if (comp.length > 0) lines.push(`*Complimentary Add-ons:* ${comp.join(' • ')}`);
 
-    lines.push(`Quantity: ${quantity}`);
-    lines.push('');
-    const unitP = currentUnitPrice || product.price;
-    lines.push(`Unit Price: ₹${unitP}`);
-    lines.push(`Total: ₹${unitP * quantity}`);
-    lines.push('');
+    if (customMessage.trim()) lines.push(`*Gift Note / Plaque:* "${customMessage.trim()}"`);
+    if (deliveryDate.trim()) lines.push(`*Preferred Delivery Date:* ${deliveryDate.trim()}`);
 
-    if (customMessage.trim()) {
-      lines.push(`${isHamper ? 'Card / Box Message' : 'Message on Plaque'}: ${customMessage.trim()}`);
-    }
-    if (deliveryDate.trim()) {
-      lines.push(`Preferred Delivery Date: ${deliveryDate.trim()}`);
-    }
-    if (specialInstructions.trim()) {
-      lines.push(`Special Instructions: ${specialInstructions.trim()}`);
-    }
+    lines.push(`*Quantity:* ${quantity}`);
+    lines.push(`*Total Amount:* ₹${currentTotalPrice || product.price}`);
 
     return lines.join('\n');
   }, [
     product,
-    isHamper,
-    isBento,
-    isDessert,
-    isBouquet,
-    isCookie,
-    extracted.typeValue,
     selectedSize,
     selectedFlavour,
-    currentPackageContents,
-    chosenCustomizations,
-    selectedAddOns,
-    quantity,
-    currentUnitPrice,
+    includeCandles,
+    includeTopper,
+    topperText,
+    includeGiftTag,
     customMessage,
     deliveryDate,
-    specialInstructions,
+    quantity,
+    currentTotalPrice,
   ]);
 
   if (!product) {
     return (
-      <div className="bg-[#FFFDFB] min-h-[70vh] flex items-center justify-center py-20 px-4">
-        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center border border-[#F3DFE5] space-y-4 shadow-xs">
-          <div className="w-14 h-14 rounded-full bg-[#FCEEF2] mx-auto flex items-center justify-center text-[#D83A6F]">
-            <Heart className="w-7 h-7" />
-          </div>
-          <h2 className="font-serif text-2xl font-bold text-[#49312E]">
-            Creation Not Found
+      <div className="bg-[#FFFBFB] min-h-[70vh] flex items-center justify-center py-20 px-4">
+        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center border border-[#F3DFE5] space-y-4">
+          <Heart className="w-8 h-8 text-[#D83A6F] mx-auto" />
+          <h2 className="font-serif text-2xl font-bold text-[#2A1810]">
+            Cake Not Found
           </h2>
-          <p className="text-sm text-[#49312E]/70 font-light">
-            The bake you are looking for is currently unavailable or has moved.
-          </p>
-          <div className="pt-2">
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#D83A6F] hover:bg-[#C42B5E] text-white text-xs font-semibold rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Collection</span>
-            </Link>
-          </div>
+          <Link
+            to="/cakes"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#D83A6F] text-white text-xs font-semibold rounded-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Cakes</span>
+          </Link>
         </div>
       </div>
     );
@@ -376,21 +259,11 @@ export function ProductDetails() {
 
   const validateSelections = (): boolean => {
     if (availableSizesList.length > 0 && !selectedSize) {
-      setValidationError(
-        isHamper
-          ? 'Please select a hamper package (Small, Medium, or Large).'
-          : isDessert
-          ? 'Please select a pack size.'
-          : 'Please select a size / weight.'
-      );
+      setValidationError('Please select a weight or size.');
       return false;
     }
     if (!isHamper && flavoursList.length > 0 && !selectedFlavour) {
-      setValidationError('Please select a flavour for your creation.');
-      return false;
-    }
-    if (currentUnitPrice === null) {
-      setValidationError('Price calculation could not be completed. Please order via WhatsApp.');
+      setValidationError('Please select a flavor.');
       return false;
     }
     setValidationError('');
@@ -400,30 +273,25 @@ export function ProductDetails() {
   const handleAddToCart = () => {
     if (!validateSelections() || currentUnitPrice === null) return;
 
-    // Build rich flavour or type representation
-    const flavourOrType = isHamper
-      ? extracted.typeValue || 'Standard Hamper'
-      : selectedFlavour;
-
-    // Attach contents summary for hampers if applicable
-    const extraInstructions = isHamper && currentPackageContents.length > 0
-      ? `Contents: ${currentPackageContents.map((c) => `${c.quantity}x ${c.name}`).join(', ')}`
-      : undefined;
-
     addToCart({
       productId: product.id,
       productName: product.name,
       slug: product.slug,
       image: product.images[0] || '',
       selectedSize: selectedSize || undefined,
-      selectedFlavour: flavourOrType || undefined,
-      selectedFlavours: flavourOrType ? [flavourOrType] : undefined,
-      selectedAddOns: selectedAddOns.length > 0 ? selectedAddOns : undefined,
+      selectedFlavour: selectedFlavour || undefined,
+      selectedFlavours: selectedFlavour ? [selectedFlavour] : undefined,
       customMessage: customMessage.trim() || undefined,
       quantity,
       unitPrice: currentUnitPrice,
       deliveryDate: deliveryDate || undefined,
-      specialInstructions: [specialInstructions.trim(), extraInstructions].filter(Boolean).join(' | ') || undefined,
+      specialInstructions: [
+        includeCandles && 'Complimentary Candles',
+        includeTopper && `Topper: ${topperText}`,
+        includeGiftTag && 'Handwritten Gift Tag',
+      ]
+        .filter(Boolean)
+        .join(' | '),
     });
 
     setAddedSuccess(true);
@@ -441,737 +309,429 @@ export function ProductDetails() {
         customer_phone: '',
         delivery_date: deliveryDate || '',
         delivery_area: 'Jaipur',
-        special_instructions: specialInstructions || '',
+        special_instructions: [
+          includeCandles && 'Complimentary Candles',
+          includeTopper && `Topper: ${topperText}`,
+          includeGiftTag && 'Gift Tag',
+        ]
+          .filter(Boolean)
+          .join(', '),
         items: [
           {
             id: product.id,
             productName: product.name,
             selectedSize: selectedSize || undefined,
-            selectedFlavour: isHamper ? extracted.typeValue : selectedFlavour,
-            selectedFlavours: isHamper ? [extracted.typeValue || 'Hamper'] : selectedFlavour ? [selectedFlavour] : undefined,
-            selectedAddOns: selectedAddOns.length > 0 ? selectedAddOns : undefined,
+            selectedFlavour: selectedFlavour || undefined,
+            selectedFlavours: selectedFlavour ? [selectedFlavour] : undefined,
             customMessage: customMessage.trim() || undefined,
             quantity,
             unitPrice: currentUnitPrice,
-            specialInstructions: specialInstructions || undefined,
           },
         ],
         subtotal: currentUnitPrice * quantity,
       });
     } catch (err) {
-      console.warn('Could not record direct order in Supabase', err);
+      console.warn('Could not record direct order in Supabase / LocalStorage', err);
     }
 
     const whatsappNum = BAKERY_DIRECT_PHONE;
-    const url = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(
-      formattedOrderMessage
-    )}`;
+    const url = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(formattedOrderMessage)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const imagesList = product.images && product.images.length > 0 ? product.images : [''];
 
   return (
-    <div className="bg-[#FFFDFB] min-h-screen pb-24 text-[#49312E]">
-      {/* Top Breadcrumb Navigation */}
-      <div className="border-b border-[#F3DFE5] bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-          <nav className="flex items-center gap-2 text-xs sm:text-sm text-[#49312E]/70 font-medium">
-            <Link to="/" className="hover:text-[#D83A6F] transition-colors">
-              Home
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-[#49312E]/35" />
-            <Link
-              to={`/shop?category=${encodeURIComponent(product.category)}`}
-              className="hover:text-[#D83A6F] transition-colors"
-            >
-              {product.category}
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-[#49312E]/35" />
-            <span className="text-[#49312E] font-semibold truncate max-w-[260px]">
-              {product.name}
-            </span>
-          </nav>
-        </div>
+    <div className="bg-[#FFFBFB] min-h-screen text-[#5C4033] pb-28 md:pb-16">
+      
+      {/* MOBILE TOP BAR (← Product Title ♡) */}
+      <div className="md:hidden border-b border-[#F3DFE5] bg-white px-4 py-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="p-1.5 -ml-1 text-[#2A1810] hover:text-[#D83A6F] cursor-pointer"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <span className="font-serif text-base font-bold text-[#2A1810] truncate max-w-[220px]">
+          {product.name}
+        </span>
+        <button
+          type="button"
+          onClick={toggleWishlist}
+          className={`p-1.5 text-[#2A1810] hover:text-[#D83A6F] cursor-pointer ${isWishlisted ? 'text-[#D83A6F]' : ''}`}
+          aria-label="Wishlist"
+        >
+          <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current text-[#D83A6F]' : ''}`} />
+        </button>
       </div>
 
-      {/* Main Details Layout: 50% Left / 50% Right on Desktop */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
+        
+        {/* DESKTOP BREADCRUMB */}
+        <div className="hidden md:flex items-center justify-between pb-6">
+          <nav className="flex items-center gap-2 text-xs text-[#9E8A85]">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1 hover:text-[#D83A6F] transition-colors cursor-pointer mr-2"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+            <span>/</span>
+            <Link to="/cakes" className="hover:text-[#D83A6F] transition-colors">
+              Cakes
+            </Link>
+            <span>/</span>
+            <span className="text-[#2A1810] font-semibold">{product.name}</span>
+          </nav>
+
+          <button
+            type="button"
+            onClick={toggleWishlist}
+            className={`p-2 rounded-full border transition-all cursor-pointer ${
+              isWishlisted
+                ? 'bg-[#FFF0F4] border-[#FCE3E9] text-[#D83A6F]'
+                : 'border-[#F3DFE5] text-[#9E8A85] hover:text-[#D83A6F]'
+            }`}
+            title="Wishlist"
+          >
+            <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
+          </button>
+        </div>
+
+        {/* 2-COLUMN PRODUCT DETAIL LAYOUT (DALL·E 3 Reference Matched) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-14 items-start">
           
-          {/* LEFT SIDE: Image Gallery */}
-          <div className="space-y-4 lg:sticky lg:top-24">
-            <div className="relative aspect-square rounded-3xl overflow-hidden bg-[#FFF9F6] border border-[#F3DFE5] p-3 sm:p-4 flex items-center justify-center shadow-xs">
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-                <span className="bg-[#D83A6F] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-2xs">
-                  {isHamper
-                    ? 'Luxury Hamper'
-                    : isBento
-                    ? 'Korean Bento'
-                    : (product as any).is_new || (product as any).isNew
-                    ? 'New Signature'
-                    : 'Boutique Selection'}
-                </span>
-                {extracted.typeValue && (
-                  <span className="bg-white/95 backdrop-blur-xs text-[#2A1810] border border-[#F3DFE5] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-2xs">
-                    {extracted.typeValue}
-                  </span>
-                )}
-              </div>
-
-              {/* Eggless Emblem */}
-              <div
-                className="absolute top-4 right-4 z-10 w-7 h-7 bg-white rounded-lg border-2 border-[#D83A6F] flex items-center justify-center shadow-2xs"
-                title="100% Pure Eggless Confectionery"
-              >
-                <div className="w-2.5 h-2.5 rounded-full bg-[#D83A6F]" />
-              </div>
-
-              <div className="w-full h-full rounded-2xl overflow-hidden bg-white shadow-2xs">
-                <ImageWithFallback
-                  src={imagesList[selectedImageIndex]}
-                  alt={product.name}
-                  fallbackText={product.name}
-                  className="w-full h-full object-cover rounded-2xl transition-transform duration-500 hover:scale-103"
-                />
-              </div>
+          {/* ===================================================================
+              LEFT COLUMN: LARGE PRODUCT PHOTOGRAPHY & THUMBNAILS
+          ==================================================================== */}
+          <div className="md:col-span-6 space-y-4">
+            <div className="relative aspect-square rounded-[28px] overflow-hidden bg-white border border-[#F3DFE5] shadow-xs flex items-center justify-center p-4">
+              <ImageWithFallback
+                src={imagesList[selectedImageIndex]}
+                alt={product.name}
+                fallbackText={product.name}
+                className="w-full h-full object-cover rounded-2xl"
+              />
             </div>
 
-            {/* Image Thumbnails */}
+            {/* Thumbnails row */}
             {imagesList.length > 1 && (
-              <div className="flex gap-3 pt-1 overflow-x-auto pb-1">
+              <div className="flex gap-2.5 overflow-x-auto pb-1">
                 {imagesList.map((img: string, idx: number) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImageIndex(idx)}
-                    className={`relative w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all p-1 bg-white cursor-pointer shrink-0 ${
+                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all p-0.5 bg-white cursor-pointer shrink-0 ${
                       selectedImageIndex === idx
-                        ? 'border-[#D83A6F] shadow-sm scale-103'
+                        ? 'border-[#D83A6F] shadow-xs scale-102'
                         : 'border-[#F3DFE5] opacity-70 hover:opacity-100'
                     }`}
                   >
                     <ImageWithFallback
                       src={img}
                       alt={`Thumbnail ${idx}`}
-                      fallbackText="thumb"
-                      className="w-full h-full object-cover rounded-xl"
+                      className="w-full h-full object-cover rounded-lg"
                     />
                   </button>
                 ))}
               </div>
             )}
-
-            {/* Quick Trust Badges */}
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#F3DFE5] text-center text-xs text-[#49312E]/75">
-              <div className="p-3 rounded-2xl bg-[#FFF9F6] border border-[#F3DFE5]">
-                <div className="font-bold text-[#2A1810]">100% Eggless</div>
-                <div className="text-[10px] text-[#49312E]/60 mt-0.5">Baked fresh in Jaipur</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-[#FFF9F6] border border-[#F3DFE5]">
-                <div className="font-bold text-[#2A1810]">Pure Couverture</div>
-                <div className="text-[10px] text-[#49312E]/60 mt-0.5">Finest ingredients</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-[#FFF9F6] border border-[#F3DFE5]">
-                <div className="font-bold text-[#2A1810]">Bespoke Packaging</div>
-                <div className="text-[10px] text-[#49312E]/60 mt-0.5">Silk ribbon &amp; cards</div>
-              </div>
-            </div>
           </div>
 
-          {/* RIGHT SIDE: Product Details, Category-Specific Controls & Actions */}
-          <div className="space-y-6">
+          {/* ===================================================================
+              RIGHT COLUMN: CONTROLS MATCHING DALL·E 3 REFERENCE PANEL 3
+              - Title: Pastel Sprinkles Cake
+              - Stars: ★★★★★ 4.8 | (120 reviews)
+              - Description
+              - 1. Choose Flavor: [ Vanilla ] [ Chocolate ] [ Strawberry ] [ Red Velvet ]
+              - 2. Choose Weight: [ 500g 1,099 ] [ 1 Kg 1,599 ] [ 1.5 Kg 1,899 ] [ 2 Kg 2,200 ]
+              - Complimentary Add-ons (Candles, Happy Birthday Acrylic Topper, Gift Tag)
+              - Price & Green "Order via WhatsApp" button
+          ==================================================================== */}
+          <div className="md:col-span-6 space-y-6">
             
-            {/* Title & Category Kickers */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs uppercase tracking-widest text-[#D83A6F] font-bold">
-                  {product.category}
-                </span>
-                {extracted.selectedSubcategories.length > 0 && (
-                  <>
-                    <span className="text-[#2A1810]/30 font-serif">·</span>
-                    <span className="text-xs text-[#2A1810]/60">
-                      {extracted.selectedSubcategories.join(' · ')}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#49312E] tracking-tight leading-tight">
+            {/* Title, Stars, Description */}
+            <div className="space-y-2">
+              <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#2A1810]">
                 {product.name}
               </h1>
 
-              {/* Short Description */}
-              <p className="text-sm sm:text-base text-[#49312E]/80 leading-relaxed font-light mt-2.5">
+              {/* Star Rating Badge (DALL·E 3 Reference Matched) */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <div className="flex items-center text-amber-500">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                  ))}
+                </div>
+                <span className="font-bold text-[#2A1810]">4.8</span>
+                <span className="text-[#9E8A85]">(120 reviews)</span>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#5C4033] font-light leading-relaxed pt-1">
                 {product.description}
               </p>
-
-              {/* Dynamic Price */}
-              <div className="mt-4 pb-4 border-b border-[#F3DFE5] flex items-baseline gap-3 flex-wrap">
-                {currentUnitPrice !== null ? (
-                  <>
-                    <span className="text-3xl sm:text-4xl font-serif font-bold text-[#D83A6F] tabular-nums">
-                      ₹{currentUnitPrice}
-                    </span>
-                    {quantity > 1 && (
-                      <span className="text-xs text-[#49312E]/60 font-medium">
-                        (₹{currentTotalPrice} for {quantity} items)
-                      </span>
-                    )}
-                    <span className="text-xs text-[#49312E]/60 font-medium">
-                      · 100% Pure Eggless
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-lg font-serif font-bold text-amber-700">
-                    Custom Pricing on Request
-                  </span>
-                )}
-              </div>
             </div>
 
-            {/* Validation Notice if any */}
+            {/* Validation Notice */}
             {validationError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-center gap-2 shadow-2xs">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{validationError}</span>
               </div>
             )}
 
-            {/* ========================================================================= */}
-            {/* 1. HAMPERS SPECIFIC VIEW                                                  */}
-            {/* ========================================================================= */}
-            {isHamper ? (
-              <div className="space-y-5">
-                {/* Hamper Package Selector (Small / Medium / Large) */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-[#49312E]">
-                      Select Package Size
-                    </label>
-                    <span className="text-xs font-semibold text-[#D83A6F]">
-                      Price updates automatically
-                    </span>
-                  </div>
+            {/* =================================================================
+                1. CHOOSE FLAVOR (DALL·E 3 Reference Matched)
+                [ Vanilla ] [ Chocolate ] [ Strawberry ] [ Red Velvet ]
+            ================================================================== */}
+            {flavoursList.length > 0 && !isHamper && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#2A1810]">
+                  1. Choose Flavor
+                </label>
 
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                    {availableSizesList.map((pkg) => {
-                      const isSelected = selectedSize === pkg;
-                      const pkgPrice = extracted.sizePricing[pkg];
-
-                      return (
-                        <button
-                          key={pkg}
-                          type="button"
-                          onClick={() => {
-                            setSelectedSize(pkg);
-                            setValidationError('');
-                          }}
-                          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                            isSelected
-                              ? 'border-[#D83A6F] bg-[#FCEEF2] shadow-xs text-[#49312E]'
-                              : 'border-[#F3DFE5] bg-white text-[#49312E]/80 hover:border-[#D83A6F]/50 hover:bg-[#FFF9F6]'
-                          }`}
-                        >
-                          <span className="text-xs sm:text-sm font-bold block">{pkg}</span>
-                          {pkgPrice && (
-                            <span className="font-serif font-bold text-sm text-[#D83A6F] tabular-nums">
-                              ₹{pkgPrice}
-                            </span>
-                          )}
-                          {isSelected && (
-                            <span className="text-[10px] font-bold text-[#D83A6F] bg-white/80 px-2 py-0.5 rounded-full mt-0.5">
-                              Selected
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* What's Inside This Hamper (Package Contents Display) */}
-                {currentPackageContents.length > 0 && (
-                  <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-b from-[#FFF9F6] to-[#FFF5F7] border border-[#F3DFE5] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-[#D83A6F]" />
-                        <h3 className="text-xs sm:text-sm font-bold text-[#2A1810]">
-                          Contents Included in {selectedSize || 'This'} Package:
-                        </h3>
-                      </div>
-                      <span className="text-[11px] font-bold text-[#D83A6F] bg-white px-2.5 py-0.5 rounded-full border border-[#F3DFE5]">
-                        {currentPackageContents.length} Items
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {currentPackageContents.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-white/90 backdrop-blur-xs p-2.5 rounded-2xl border border-[#F3DFE5] flex items-center justify-between text-xs"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-bold text-[#D83A6F] bg-[#FFF0F4] px-2 py-0.5 rounded-lg text-[11px] shrink-0 font-mono">
-                              {item.quantity}×
-                            </span>
-                            <div className="min-w-0">
-                              <span className="font-semibold text-[#2A1810] block truncate">
-                                {item.name}
-                              </span>
-                              {item.variant && (
-                                <span className="text-[10px] text-[#2A1810]/60 block truncate">
-                                  {item.variant}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {item.notes && (
-                            <span className="text-[9px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0">
-                              {item.notes}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Hamper Customization Checkboxes */}
-                {extracted.selectedCustomizations.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-[#F3DFE5]">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-sm font-bold text-[#49312E] flex items-center gap-1.5">
-                        <Gift className="w-4 h-4 text-[#D83A6F]" />
-                        <span>Included Customizations</span>
-                      </label>
-                      <span className="text-[11px] text-[#2A1810]/60">
-                        Select which apply to your gift
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {extracted.selectedCustomizations.map((cust) => {
-                        const isChosen = chosenCustomizations.includes(cust);
-                        return (
-                          <button
-                            key={cust}
-                            type="button"
-                            onClick={() => handleCustomizationToggle(cust)}
-                            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
-                              isChosen
-                                ? 'bg-[#2A1810] text-white shadow-2xs'
-                                : 'bg-white border border-[#F3DFE5] text-[#2A1810]/70 hover:border-[#D83A6F]/40'
-                            }`}
-                          >
-                            <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${isChosen ? 'bg-[#D83A6F] text-white border-[#D83A6F]' : 'border-[#2A1810]/30'}`}>
-                              {isChosen && <Check className="w-3 h-3 stroke-[3]" />}
-                            </div>
-                            <span>{cust}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Greeting Card Message Input */}
-                <div className="space-y-1.5 pt-2 border-t border-[#F3DFE5]">
-                  <label
-                    htmlFor="hamper-card-message"
-                    className="block text-sm font-bold text-[#49312E] flex items-center gap-1.5"
-                  >
-                    <FileText className="w-4 h-4 text-[#D83A6F]" />
-                    <span>Personalized Greeting Card / Recipient Name (Optional)</span>
-                  </label>
-                  <input
-                    id="hamper-card-message"
-                    type="text"
-                    maxLength={100}
-                    placeholder="e.g. Happy Birthday to the sweetest friend! Love, Tanya"
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white border border-[#F3DFE5] text-xs sm:text-sm text-[#49312E] focus:outline-hidden focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 shadow-2xs transition-all"
-                  />
-                  <p className="text-[11px] text-[#49312E]/60">
-                    Handwritten with gold calligraphy ink on heavy cardstock and wax-sealed.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              /* ========================================================================= */
-              /* 2. STANDARD BAKERY CONTROLS (Cakes, Bento, Desserts, Bouquets, Cookies)   */
-              /* ========================================================================= */
-              <div className="space-y-5">
-                
-                {/* Weight / Size Selection */}
-                {availableSizesList.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="cake-weight-select"
-                        className="block text-sm font-bold text-[#49312E]"
-                      >
-                        {isBento
-                          ? 'Select Bento Size'
-                          : isDessert
-                          ? 'Select Pack Size'
-                          : isBouquet
-                          ? 'Select Bouquet Arrangement'
-                          : isCookie
-                          ? 'Select Box Size'
-                          : 'Select Cake Weight'}
-                      </label>
-                      {selectedSize && weightServingMap[selectedSize] && (
-                        <span className="text-xs text-[#D83A6F] font-semibold flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" />
-                          <span>{weightServingMap[selectedSize]}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Visual Pill Cards for Weights */}
-                    <div className="flex flex-wrap gap-2 pt-1 pb-1">
-                      {availableSizesList.map((sz: string) => {
-                        const isSelected = selectedSize === sz;
-                        const szPrice = selectedFlavour
-                          ? (getFlavourCombinationPrice(product, sz, [selectedFlavour]) ?? extracted.sizePricing[sz])
-                          : extracted.sizePricing[sz];
-                        return (
-                          <button
-                            key={sz}
-                            type="button"
-                            onClick={() => {
-                              setSelectedSize(sz);
-                              setValidationError('');
-                            }}
-                            className={`px-3 py-2 rounded-xl border text-center transition-all cursor-pointer flex items-center gap-2 ${
-                              isSelected
-                                ? 'border-[#D83A6F] bg-[#FCEEF2] shadow-2xs text-[#49312E]'
-                                : 'border-[#F3DFE5] bg-white text-[#49312E]/80 hover:border-[#D83A6F]/50 hover:bg-[#FFF9F6]'
-                            }`}
-                          >
-                            <span className="text-xs font-bold block">{sz}</span>
-                            {szPrice && (
-                              <span className="font-serif font-bold text-xs text-[#D83A6F] tabular-nums">
-                                ₹{szPrice}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="relative sm:hidden">
-                      <select
-                        id="cake-weight-select"
-                        value={selectedSize}
-                        onChange={(e) => {
-                          setSelectedSize(e.target.value);
+                <div className="flex flex-wrap gap-2">
+                  {flavoursList.map((flav: string) => {
+                    const isSelected = selectedFlavour.toLowerCase() === flav.toLowerCase();
+                    return (
+                      <button
+                        key={flav}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFlavour(flav);
                           setValidationError('');
                         }}
-                        className="w-full bg-white border border-[#F3DFE5] focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 rounded-2xl px-4 py-3 text-sm text-[#49312E] font-medium appearance-none cursor-pointer pr-10 shadow-2xs transition-all"
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#2A1810] text-white border-[#2A1810] shadow-xs'
+                            : 'bg-white text-[#5C4033] border-[#F3DFE5] hover:border-[#D83A6F]'
+                        }`}
                       >
-                        <option value="" disabled>
-                          Choose {isDessert ? 'pack size' : 'option'}
-                        </option>
-                        {availableSizesList.map((sz: string) => {
-                          const serving = weightServingMap[sz] || '';
-                          const szPrice = selectedFlavour
-                            ? (getFlavourCombinationPrice(product, sz, [selectedFlavour]) ?? extracted.sizePricing[sz])
-                            : extracted.sizePricing[sz];
-                          const priceStr = szPrice ? ` - ₹${szPrice}` : '';
-                          return (
-                            <option key={sz} value={sz}>
-                              {sz} {serving ? `(${serving})` : ''} {priceStr}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-[#49312E]/60 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Flavour Selection (if applicable) */}
-                {flavoursList.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="cake-flavour-select"
-                        className="block text-sm font-bold text-[#49312E]"
-                      >
-                        {isBento
-                          ? 'Select Bento Flavour'
-                          : isDessert
-                          ? 'Select Flavour'
-                          : isBouquet
-                          ? 'Select Variety'
-                          : 'Select Cake Flavour'}
-                      </label>
-                      <span className="text-xs text-[#D83A6F] font-semibold bg-[#FCEEF2] px-2.5 py-0.5 rounded-full border border-[#F3DFE5]">
-                        Price updates per combination
-                      </span>
-                    </div>
-
-                    {/* Visual Pill Cards for Flavours */}
-                    <div className="flex flex-wrap gap-2 pt-1 pb-1">
-                      {flavoursList.map((flav: string) => {
-                        const isSelected = selectedFlavour === flav;
-                        const flvPrice = selectedSize
-                          ? getFlavourCombinationPrice(product, selectedSize, [flav])
-                          : null;
-                        return (
-                          <button
-                            key={flav}
-                            type="button"
-                            onClick={() => {
-                              setSelectedFlavour(flav);
-                              setValidationError('');
-                            }}
-                            className={`px-3 py-1.5 rounded-xl border text-center transition-all cursor-pointer flex items-center gap-1.5 ${
-                              isSelected
-                                ? 'border-[#2A1810] bg-[#2A1810] text-white shadow-2xs font-semibold'
-                                : 'border-[#F3DFE5] bg-white text-[#49312E]/80 hover:border-[#D83A6F]/50 hover:bg-[#FFF9F6]'
-                            }`}
-                          >
-                            <span className="text-xs block">{flav}</span>
-                            {flvPrice && (
-                              <span className={`font-serif font-bold text-xs tabular-nums ${isSelected ? 'text-[#FFD1DC]' : 'text-[#D83A6F]'}`}>
-                                ₹{flvPrice}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="relative sm:hidden">
-                      <select
-                        id="cake-flavour-select"
-                        value={selectedFlavour}
-                        onChange={(e) => {
-                          setSelectedFlavour(e.target.value);
-                          setValidationError('');
-                        }}
-                        className="w-full bg-white border border-[#F3DFE5] focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 rounded-2xl px-4 py-3 text-sm text-[#49312E] font-medium appearance-none cursor-pointer pr-10 shadow-2xs transition-all"
-                      >
-                        <option value="" disabled>
-                          Choose flavour
-                        </option>
-                        {flavoursList.map((flav: string) => {
-                          const flvPrice = selectedSize
-                            ? getFlavourCombinationPrice(product, selectedSize, [flav])
-                            : null;
-                          const priceStr = flvPrice ? ` (₹${flvPrice})` : '';
-                          return (
-                            <option key={flav} value={flav}>
-                              {flav}{priceStr}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-[#49312E]/60 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Custom Message on Cake / Card */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="custom-cake-message"
-                    className="block text-sm font-bold text-[#49312E]"
-                  >
-                    {isBento
-                      ? 'Custom Piped Message (Short Text)'
-                      : isDessert || isCookie
-                      ? 'Gift Note / Sleeve Message (Optional)'
-                      : isBouquet
-                      ? 'Handwritten Letter Card (Optional)'
-                      : 'Custom Message on Cake (Optional)'}
-                  </label>
-                  <input
-                    id="custom-cake-message"
-                    type="text"
-                    maxLength={35}
-                    placeholder="e.g. Happy Birthday Priya! 🎂"
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white border border-[#F3DFE5] text-xs sm:text-sm text-[#49312E] focus:outline-hidden focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 shadow-2xs transition-all"
-                  />
-                  <p className="text-[11px] text-[#49312E]/60">
-                    Up to 35 characters.
-                  </p>
+                        {flav}
+                      </button>
+                    );
+                  })}
                 </div>
-
-                {/* Add-ons (for Cakes & Bento) */}
-                {availableAddOns.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-[#F3DFE5]">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-sm font-bold text-[#49312E]">
-                        Celebration Add-ons (Optional)
-                      </label>
-                      {selectedAddOns.length > 0 && (
-                        <span className="text-xs text-[#D83A6F] font-semibold">
-                          +{selectedAddOns.length} selected (+₹{addOnsTotal})
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {availableAddOns.map((addon) => {
-                        const isSelected = selectedAddOns.some((a) => a.id === addon.id);
-                        return (
-                          <button
-                            key={addon.id}
-                            type="button"
-                            onClick={() => handleAddOnToggle(addon)}
-                            className={`p-2.5 sm:p-3 rounded-2xl text-left border transition-all cursor-pointer flex items-center justify-between ${
-                              isSelected
-                                ? 'border-[#D83A6F] bg-[#FCEEF2] text-[#49312E] shadow-2xs'
-                                : 'border-[#F3DFE5] bg-white text-[#49312E]/80 hover:bg-[#FFF9F6]'
-                            }`}
-                          >
-                            <div className="space-y-0.5 pr-2">
-                              <div className="text-xs font-semibold text-[#49312E]">
-                                {addon.name}
-                              </div>
-                              {addon.description && (
-                                <div className="text-[10px] text-[#49312E]/60 line-clamp-1">
-                                  {addon.description}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs font-bold text-[#D83A6F] tabular-nums font-serif">
-                                +₹{addon.price}
-                              </span>
-                              <div
-                                className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                                  isSelected
-                                    ? 'bg-[#D83A6F] border-[#D83A6F] text-white'
-                                    : 'border-[#F3DFE5] bg-white'
-                                }`}
-                              >
-                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Quantity Selector */}
-            <div className="space-y-1.5 pt-2 border-t border-[#F3DFE5]">
-              <label className="block text-sm font-bold text-[#49312E]">
-                Quantity
+            {/* =================================================================
+                2. CHOOSE WEIGHT (DALL·E 3 Reference Matched)
+                [ 500 g | 1,099 ] [ 1 Kg | 1,599 ] [ 1.5 Kg | 1,899 ] [ 2 Kg | 2,200 ]
+            ================================================================== */}
+            {availableSizesList.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#2A1810]">
+                  2. Choose Weight
+                </label>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {availableSizesList.map((sz: string) => {
+                    const isSelected = selectedSize === sz;
+                    const szPrice = selectedFlavour
+                      ? (getFlavourCombinationPrice(product, sz, [selectedFlavour]) ?? extracted.sizePricing[sz])
+                      : extracted.sizePricing[sz];
+
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSize(sz);
+                          setValidationError('');
+                        }}
+                        className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'border-[#D83A6F] bg-[#FFF0F4] text-[#D83A6F] ring-1 ring-[#D83A6F]'
+                            : 'border-[#F3DFE5] bg-white text-[#5C4033] hover:border-[#D83A6F]/60'
+                        }`}
+                      >
+                        <span className="text-xs font-bold block">{sz}</span>
+                        {szPrice && (
+                          <span className="font-serif font-bold text-xs text-[#2A1810] tabular-nums">
+                            ₹{szPrice}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* =================================================================
+                COMPLIMENTARY ADD-ONS (DALL·E 3 Reference Matched)
+                ✨ Complimentary Add-ons
+                Every cake comes with these on us!
+                [ Candles ] [ Happy Birthday Acrylic Topper ] [ Gift Tag (Handwritten) ]
+            ================================================================== */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#FFF9F6] border border-[#F3DFE5] space-y-3.5">
+              <div className="text-center space-y-0.5">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#2A1810]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D83A6F]" />
+                  <span>Complimentary Add-ons</span>
+                </div>
+                <p className="text-[11px] text-[#9E8A85]">
+                  Every cake comes with these on us!
+                </p>
+              </div>
+
+              {/* 3 Horizontal Items with Icons */}
+              <div className="grid grid-cols-3 gap-2.5 pt-1 text-center">
+                
+                {/* 1. Candles */}
+                <div
+                  onClick={() => setIncludeCandles(!includeCandles)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                    includeCandles ? 'bg-white border-[#D83A6F] shadow-2xs' : 'bg-white/60 border-[#F3DFE5] opacity-60'
+                  }`}
+                >
+                  <Flame className="w-5 h-5 text-[#D83A6F]" />
+                  <span className="text-[11px] font-bold text-[#2A1810] leading-tight">
+                    Candles
+                  </span>
+                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">
+                    Included
+                  </span>
+                </div>
+
+                {/* 2. Happy Birthday Acrylic Topper */}
+                <div
+                  onClick={() => setIncludeTopper(!includeTopper)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                    includeTopper ? 'bg-white border-[#D83A6F] shadow-2xs' : 'bg-white/60 border-[#F3DFE5] opacity-60'
+                  }`}
+                >
+                  <Award className="w-5 h-5 text-[#D83A6F]" />
+                  <span className="text-[11px] font-bold text-[#2A1810] leading-tight">
+                    Happy Birthday Acrylic Topper
+                  </span>
+                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">
+                    Included
+                  </span>
+                </div>
+
+                {/* 3. Gift Tag (Handwritten) */}
+                <div
+                  onClick={() => setIncludeGiftTag(!includeGiftTag)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                    includeGiftTag ? 'bg-white border-[#D83A6F] shadow-2xs' : 'bg-white/60 border-[#F3DFE5] opacity-60'
+                  }`}
+                >
+                  <Tag className="w-5 h-5 text-[#D83A6F]" />
+                  <span className="text-[11px] font-bold text-[#2A1810] leading-tight">
+                    Gift Tag (Handwritten)
+                  </span>
+                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">
+                    Included
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Optional Gift Note or Cake Plaque Message */}
+            <div className="space-y-1">
+              <label
+                htmlFor="custom-cake-message"
+                className="block text-xs font-semibold text-[#2A1810]"
+              >
+                Custom Plaque Message / Handwritten Note (Optional)
               </label>
-              <div className="inline-flex items-center bg-white border border-[#F3DFE5] rounded-2xl overflow-hidden shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-2.5 text-xs text-[#49312E] hover:bg-[#FCEEF2] transition-colors cursor-pointer"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="px-5 py-2.5 text-sm font-bold text-[#49312E] tabular-nums min-w-[3rem] text-center font-serif">
-                  {quantity}
+              <input
+                id="custom-cake-message"
+                type="text"
+                maxLength={40}
+                placeholder="e.g. Happy Birthday Maya! 🎂"
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#F3DFE5] text-xs text-[#2A1810] focus:outline-hidden focus:border-[#D83A6F]"
+              />
+            </div>
+
+            {/* DESKTOP BOTTOM ACTION AREA (DALL·E 3 Reference Matched) */}
+            <div className="hidden md:flex items-center justify-between gap-4 pt-4 border-t border-[#F3DFE5]">
+              {/* Price display with selection */}
+              <div>
+                <span className="font-serif text-3xl font-bold text-[#2A1810] tabular-nums block">
+                  ₹{currentTotalPrice || product.price}
                 </span>
+                <span className="text-xs text-[#9E8A85]">
+                  ({selectedSize || '1 Kg'} - {selectedFlavour || 'Vanilla'})
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-4 py-2.5 text-xs text-[#49312E] hover:bg-[#FCEEF2] transition-colors cursor-pointer"
-                  aria-label="Increase quantity"
+                  onClick={handleAddToCart}
+                  className="px-5 py-3 rounded-full border border-[#F3DFE5] bg-white text-[#2A1810] hover:border-[#D83A6F] text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  Add to Cart
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDirectWhatsAppOrder}
+                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#22C55E] hover:bg-[#16A34A] text-white text-sm font-bold rounded-full shadow-md hover:shadow-lg transition-all cursor-pointer whitespace-nowrap min-h-[48px]"
+                >
+                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <span>Order via WhatsApp</span>
                 </button>
               </div>
             </div>
 
-            {/* Preferred Delivery Date */}
-            <div className="space-y-1.5 pt-2 border-t border-[#F3DFE5]">
-              <label
-                htmlFor="delivery-date-input"
-                className="block text-sm font-bold text-[#49312E] flex items-center gap-1.5"
-              >
-                <Calendar className="w-4 h-4 text-[#D83A6F]" />
-                <span>Preferred Delivery Date (Jaipur)</span>
-              </label>
-              <input
-                id="delivery-date-input"
-                type="date"
-                min={new Date().toISOString().split('T')[0]}
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-white border border-[#F3DFE5] text-xs sm:text-sm text-[#49312E] focus:outline-hidden focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 shadow-2xs transition-all"
-              />
-            </div>
-
-            {/* Special Instructions */}
-            <div className="space-y-1.5 pt-2 border-t border-[#F3DFE5]">
-              <label
-                htmlFor="special-instructions"
-                className="block text-sm font-bold text-[#49312E] flex items-center gap-1.5"
-              >
-                <Clock className="w-4 h-4 text-[#D83A6F]" />
-                <span>Special Instructions / Landmark</span>
-              </label>
-              <textarea
-                id="special-instructions"
-                rows={2}
-                placeholder="e.g. Ring bell twice, deliver between 5-7 PM in Vaishali Nagar..."
-                value={specialInstructions}
-                onChange={(e) => setSpecialInstructions(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-white border border-[#F3DFE5] text-xs sm:text-sm text-[#49312E] focus:outline-hidden focus:border-[#E8A0B4] focus:ring-2 focus:ring-[#E8A0B4]/20 shadow-2xs transition-all"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-4 space-y-3">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="w-full py-4 px-6 bg-[#D83A6F] hover:bg-[#C42B5E] text-white rounded-2xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all cursor-pointer group"
-              >
-                <ShoppingBag className="w-5 h-5 transition-transform group-hover:scale-110" />
-                <span>Add to Cart · ₹{currentTotalPrice || product.price}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDirectWhatsAppOrder}
-                className="w-full py-3.5 px-6 bg-[#25D366] hover:bg-[#20BE5C] text-white rounded-2xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>Order Directly on WhatsApp</span>
-              </button>
-
-              {addedSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-800 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Added to your patisserie cart!</span>
-                  </div>
-                  <Link
-                    to="/cart"
-                    className="font-bold underline text-emerald-900 hover:text-emerald-700 ml-2"
-                  >
-                    View Cart &rarr;
-                  </Link>
+            {addedSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Added to your cart!</span>
                 </div>
-              )}
-            </div>
+                <Link
+                  to="/cart"
+                  className="font-bold underline text-emerald-900 ml-2"
+                >
+                  View Cart &rarr;
+                </Link>
+              </div>
+            )}
 
           </div>
 
         </div>
+
       </div>
+
+      {/* =========================================================================
+          MOBILE STICKY ACTION BAR (DALL·E 3 Reference Panel 3 Mobile Screen)
+          Bottom Bar: ₹1,099 (1 Kg - Vanilla) + [WhatsApp icon] Order via WhatsApp
+      ========================================================================== */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 backdrop-blur-md border-t border-[#F3DFE5] px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+        <div>
+          <div className="font-serif text-2xl font-bold text-[#2A1810] tabular-nums leading-tight">
+            ₹{currentTotalPrice || product.price}
+          </div>
+          <div className="text-[11px] text-[#9E8A85]">
+            ({selectedSize || '1 Kg'} - {selectedFlavour || 'Vanilla'})
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDirectWhatsAppOrder}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-bold rounded-full shadow-md transition-all min-h-[46px] whitespace-nowrap cursor-pointer"
+        >
+          <MessageCircle className="w-4 h-4 fill-current" />
+          <span>Order via WhatsApp</span>
+        </button>
+      </div>
+
     </div>
   );
 }

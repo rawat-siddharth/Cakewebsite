@@ -3,6 +3,32 @@
 @theme {
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Karla', system-ui, sans-serif;
+
+  /* Primary Background Canvas */
+  --color-canvas: #FFFBFB;
+
+  /* Primary Accent: Soft Pastel Pink */
+  --color-pastel-pink: #F8B4B4;
+  --color-pastel-pink-soft: #F7D6D0;
+  --color-pastel-pink-dark: #D83A6F;
+
+  /* Secondary Accents */
+  --color-pastel-mint: #E2F0D9;
+  --color-pastel-mint-dark: #4A7A3E;
+  --color-pastel-lavender: #E8E0F0;
+  --color-pastel-lavender-dark: #644A85;
+  --color-pastel-peach: #FFF0D9;
+  --color-pastel-peach-dark: #9A5A12;
+
+  /* Neutral Text */
+  --color-cocoa: #2A1810;
+  --color-espresso: #5C4033;
+  --color-muted-label: #9E8A85;
+
+  /* Card Surfaces & Borders */
+  --color-card-bg: #FFFFFF;
+  --color-card-border: #F3DFE5;
+  --shadow-card: 0 8px 24px rgba(232, 93, 117, 0.06);
 }
 
 html {
@@ -11,13 +37,14 @@ html {
 
 body {
   font-family: 'Karla', sans-serif;
-  color: #2A1810;
-  background-color: #FFFDFB;
+  color: #5C4033;
+  background-color: #FFFBFB;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, .font-serif {
   font-family: 'Cormorant Garamond', Georgia, serif;
+  color: #2A1810;
 }
 
 /* Custom subtle scrollbars */
@@ -31,10 +58,17 @@ h1, h2, h3, h4, .font-serif {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E8A0B4;
+  background: #F8B4B4;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D83A6F;
+  background: #E895A2;
+}
+
+/* Card utility */
+.card-pastel {
+  background-color: #FFFFFF;
+  border: 1px solid #F3DFE5;
+  box-shadow: 0 8px 24px rgba(232, 93, 117, 0.06);
 }

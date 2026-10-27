@@ -107,6 +107,30 @@ export interface DatabaseDeliverySettings {
   updated_at?: string;
 }
 
+export interface HomepageBannerSlide {
+  id: string;
+  heading: string;
+  description: string;
+  button_label?: string;
+  button_link?: string;
+  promo_badge?: string;
+  image?: string;
+  bg_gradient?: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface CustomerGalleryItem {
+  id: string;
+  title: string;
+  caption?: string;
+  image: string;
+  tag?: string;
+  display_order: number;
+  is_active: boolean;
+  is_placeholder?: boolean;
+}
+
 export interface DatabaseWebsiteSettings {
   id: string;
   brand_name: string;
@@ -117,6 +141,9 @@ export interface DatabaseWebsiteSettings {
   hero_heading: string;
   hero_description: string;
   hero_image?: string;
+  banner_slides?: HomepageBannerSlide[];
+  customer_gallery?: CustomerGalleryItem[];
+  trending_product_ids?: string[];
   updated_at?: string;
 }
 
@@ -126,3 +153,4 @@ export interface UserRole {
   role: 'admin' | 'super_admin';
   created_at?: string;
 }
+

@@ -5,7 +5,9 @@ import {
   DatabaseOrder,
   DatabaseDeliverySettings,
   DatabaseWebsiteSettings,
-  OrderStatus
+  OrderStatus,
+  HomepageBannerSlide,
+  CustomerGalleryItem
 } from '../types/supabase';
 import { PRODUCTS } from '../data/products';
 import { CATEGORIES } from '../data/categories';
@@ -70,6 +72,138 @@ const LOCAL_CATEGORIES_KEY = 'cnc_local_categories';
 const LOCAL_ORDERS_KEY = 'cnc_local_orders';
 const LOCAL_SETTINGS_KEY = 'cnc_local_settings';
 const LOCAL_DELIVERY_KEY = 'cnc_local_delivery';
+const LOCAL_BANNERS_KEY = 'cnc_local_banners';
+const LOCAL_GALLERY_KEY = 'cnc_local_gallery';
+const LOCAL_TRENDING_KEY = 'cnc_local_trending';
+
+// ==============================================================================
+// HOMEPAGE ENHANCEMENT DEFAULTS (Matching User Bakery Directive)
+// ==============================================================================
+export const DEFAULT_HOMEPAGE_BANNERS: HomepageBannerSlide[] = [
+  {
+    id: 'banner-1',
+    heading: 'Freshly Baked With Love',
+    description: 'Every cake is freshly prepared with care, handcrafted from scratch for your special celebrations.',
+    button_label: 'Order Fresh Cake',
+    button_link: '/cakes',
+    promo_badge: '100% Pure Eggless • Baked Fresh Daily in Jaipur',
+    image: '/src/assets/images/pastel_sprinkles_cake.jpg',
+    bg_gradient: 'from-[#FDEEEF] via-[#FDF3F5] to-[#FCEBED]',
+    display_order: 1,
+    is_active: true,
+  },
+  {
+    id: 'banner-2',
+    heading: 'Order a Day Ahead',
+    description: 'Our cakes are freshly baked to order. Place your order at least one day in advance so we can prepare it fresh for your celebration.',
+    button_label: 'Plan Your Celebration',
+    button_link: '/cakes',
+    promo_badge: 'Hand-Crafted Fresh • Advance Notice Requested',
+    image: '/src/assets/images/hero_cake_display_1790174282202.jpg',
+    bg_gradient: 'from-[#FFF7F0] via-[#FFFDF9] to-[#FCEFE3]',
+    display_order: 2,
+    is_active: true,
+  },
+  {
+    id: 'banner-3',
+    heading: 'Made for Your Moments',
+    description: 'Birthdays, anniversaries, and little celebrations deserve something special.',
+    button_label: 'Explore Occasions',
+    button_link: '/cakes?occasion=Birthdays',
+    promo_badge: 'Custom Celebration Cakes • Jaipur Handcrafted',
+    image: '/src/assets/images/strawberry_dream_cake_1790174782027.jpg',
+    bg_gradient: 'from-[#F7F2FA] via-[#FAF6FC] to-[#EFE6F7]',
+    display_order: 3,
+    is_active: true,
+  },
+  {
+    id: 'banner-4',
+    heading: 'Bento Cakes & Mini Treats',
+    description: 'Small cakes, big happiness. Discover our cute mini and bento cakes in delightful flavors.',
+    button_label: 'Shop Bento Cakes',
+    button_link: '/shop?category=bento-cakes',
+    promo_badge: 'Clamshell Cute • Perfect for 1-2 People',
+    image: '/src/assets/images/bento_happy_day.jpg',
+    bg_gradient: 'from-[#EFF8F1] via-[#F5FAF6] to-[#E3F2E7]',
+    display_order: 4,
+    is_active: true,
+  },
+  {
+    id: 'banner-5',
+    heading: 'Thoughtful Gifts & Hampers',
+    description: 'Make someone’s day sweeter with a beautiful cake or a thoughtfully curated hamper.',
+    button_label: 'Explore Hampers',
+    button_link: '/shop?category=hampers',
+    promo_badge: 'Artisanal Hampers • Floral & Sweet Treats',
+    image: '/src/assets/images/hamper_gift_basket.jpg',
+    bg_gradient: 'from-[#FFF3ED] via-[#FFF8F4] to-[#FCE8DC]',
+    display_order: 5,
+    is_active: true,
+  },
+];
+
+export const DEFAULT_CUSTOMER_GALLERY: CustomerGalleryItem[] = [
+  {
+    id: 'moment-1',
+    title: 'Birthday Celebration Cake',
+    caption: 'Pastel piped tiered design with sprinkles & custom topper',
+    tag: 'Demo Placeholder • Birthday',
+    image: '/src/assets/images/pastel_sprinkles_cake.jpg',
+    display_order: 1,
+    is_active: true,
+    is_placeholder: true,
+  },
+  {
+    id: 'moment-2',
+    title: 'Customised Floral Cake',
+    caption: 'Soft buttercream palette with delicate sugar blossoms',
+    tag: 'Demo Placeholder • Floral',
+    image: '/src/assets/images/flavor_vanilla.jpg',
+    display_order: 2,
+    is_active: true,
+    is_placeholder: true,
+  },
+  {
+    id: 'moment-3',
+    title: 'Cute Bento Cake',
+    caption: 'Korean lunchbox bento cake with pastel piped lettering',
+    tag: 'Demo Placeholder • Bento',
+    image: '/src/assets/images/bento_happy_day.jpg',
+    display_order: 3,
+    is_active: true,
+    is_placeholder: true,
+  },
+  {
+    id: 'moment-4',
+    title: 'Anniversary Celebration',
+    caption: 'Romantic pink rosette cake with fresh berries',
+    tag: 'Demo Placeholder • Anniversary',
+    image: '/src/assets/images/strawberry_dream_cake_1790174782027.jpg',
+    display_order: 4,
+    is_active: true,
+    is_placeholder: true,
+  },
+  {
+    id: 'moment-5',
+    title: 'Personalised Message Cake',
+    caption: 'Belgian dark chocolate drip with handwritten acrylic plaque',
+    tag: 'Demo Placeholder • Custom Message',
+    image: '/src/assets/images/luxury_belgian_truffle_cake_1790175278847.jpg',
+    display_order: 5,
+    is_active: true,
+    is_placeholder: true,
+  },
+];
+
+export const DEFAULT_TRENDING_CAKE_IDS: string[] = [
+  'pastel-sprinkles-cake',
+  'classic-chocolate-drip-cake',
+  'floral-vanilla-dream',
+  'pink-buttercream-cake',
+  'artisan-matcha-green-tea-cake',
+  'bento-vanilla-berry',
+];
+
 
 // Initial local seeds converted to Database types
 const INITIAL_DB_CATEGORIES: DatabaseCategory[] = CATEGORIES.map((c, idx) => ({
@@ -590,6 +724,123 @@ export async function saveWebsiteSettings(settings: Partial<DatabaseWebsiteSetti
     localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(payload));
   }
   return payload;
+}
+
+// ==============================================================================
+// HOMEPAGE CONTENT SERVICES (Banners, Customer Gallery, Trending Cakes)
+// ==============================================================================
+export async function getHomepageBanners(): Promise<HomepageBannerSlide[]> {
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('website_settings').select('banner_slides').eq('id', 'default').single();
+      if (!error && data?.banner_slides && Array.isArray(data.banner_slides) && data.banner_slides.length > 0) {
+        return data.banner_slides as HomepageBannerSlide[];
+      }
+    } catch (e) {}
+  }
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(LOCAL_BANNERS_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+  }
+  return DEFAULT_HOMEPAGE_BANNERS;
+}
+
+export async function saveHomepageBanners(banners: HomepageBannerSlide[]): Promise<HomepageBannerSlide[]> {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(banners));
+    window.dispatchEvent(new CustomEvent('cnc_homepage_updated'));
+  }
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      await supabase.from('website_settings').update({ banner_slides: banners, updated_at: new Date().toISOString() }).eq('id', 'default');
+    } catch (e) {}
+  }
+  return banners;
+}
+
+export async function getCustomerGallery(): Promise<CustomerGalleryItem[]> {
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('website_settings').select('customer_gallery').eq('id', 'default').single();
+      if (!error && data?.customer_gallery && Array.isArray(data.customer_gallery) && data.customer_gallery.length > 0) {
+        return data.customer_gallery as CustomerGalleryItem[];
+      }
+    } catch (e) {}
+  }
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(LOCAL_GALLERY_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+  }
+  return DEFAULT_CUSTOMER_GALLERY;
+}
+
+export async function saveCustomerGallery(gallery: CustomerGalleryItem[]): Promise<CustomerGalleryItem[]> {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_GALLERY_KEY, JSON.stringify(gallery));
+    window.dispatchEvent(new CustomEvent('cnc_homepage_updated'));
+  }
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      await supabase.from('website_settings').update({ customer_gallery: gallery, updated_at: new Date().toISOString() }).eq('id', 'default');
+    } catch (e) {}
+  }
+  return gallery;
+}
+
+export async function getTrendingCakeIds(): Promise<string[]> {
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('website_settings').select('trending_product_ids').eq('id', 'default').single();
+      if (!error && data?.trending_product_ids && Array.isArray(data.trending_product_ids) && data.trending_product_ids.length > 0) {
+        return data.trending_product_ids;
+      }
+    } catch (e) {}
+  }
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(LOCAL_TRENDING_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+  }
+  return DEFAULT_TRENDING_CAKE_IDS;
+}
+
+export async function saveTrendingCakeIds(ids: string[]): Promise<string[]> {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_TRENDING_KEY, JSON.stringify(ids));
+    window.dispatchEvent(new CustomEvent('cnc_homepage_updated'));
+  }
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      await supabase.from('website_settings').update({ trending_product_ids: ids, updated_at: new Date().toISOString() }).eq('id', 'default');
+    } catch (e) {}
+  }
+  return ids;
 }
 
 export async function getDeliverySettings(): Promise<DatabaseDeliverySettings> {

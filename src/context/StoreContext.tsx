@@ -3,13 +3,21 @@ import {
   DatabaseProduct,
   DatabaseCategory,
   DatabaseWebsiteSettings,
-  DatabaseDeliverySettings
+  DatabaseDeliverySettings,
+  HomepageBannerSlide,
+  CustomerGalleryItem
 } from '../types/supabase';
 import {
   getProducts,
   getCategories,
   getWebsiteSettings,
-  getDeliverySettings
+  getDeliverySettings,
+  getHomepageBanners,
+  getCustomerGallery,
+  getTrendingCakeIds,
+  DEFAULT_HOMEPAGE_BANNERS,
+  DEFAULT_CUSTOMER_GALLERY,
+  DEFAULT_TRENDING_CAKE_IDS
 } from '../lib/supabase';
 import { getDynamicHeaderCategories, MainCategory } from '../data/categories';
 
@@ -19,6 +27,9 @@ interface StoreContextType {
   mainCategories: MainCategory[];
   websiteSettings: DatabaseWebsiteSettings;
   deliverySettings: DatabaseDeliverySettings;
+  homepageBanners: HomepageBannerSlide[];
+  customerGallery: CustomerGalleryItem[];
+  trendingCakeIds: string[];
   loading: boolean;
   refreshStoreData: () => Promise<void>;
   featuredProducts: DatabaseProduct[];
@@ -49,20 +60,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     available_slots: ['Morning (10 AM - 1 PM)', 'Afternoon (1 PM - 5 PM)', 'Evening (5 PM - 9 PM)'],
     blocked_dates: [],
   });
+  const [homepageBanners, setHomepageBanners] = useState<HomepageBannerSlide[]>(DEFAULT_HOMEPAGE_BANNERS);
+  const [customerGallery, setCustomerGallery] = useState<CustomerGalleryItem[]>(DEFAULT_CUSTOMER_GALLERY);
+  const [trendingCakeIds, setTrendingCakeIds] = useState<string[]>(DEFAULT_TRENDING_CAKE_IDS);
   const [loading, setLoading] = useState(true);
 
   const refreshStoreData = useCallback(async () => {
     try {
-      const [prods, cats, webSet, delSet] = await Promise.all([
+      const [prods, cats, webSet, delSet, banners, gallery, trendingIds] = await Promise.all([
         getProducts({ onlyPublished: true }),
         getCategories({ onlyPublished: true }),
         getWebsiteSettings(),
         getDeliverySettings(),
+        getHomepageBanners(),
+        getCustomerGallery(),
+        getTrendingCakeIds(),
       ]);
       setProducts(prods);
       setCategories(cats);
       setWebsiteSettings(webSet);
       setDeliverySettings(delSet);
+      setHomepageBanners(banners);
+      setCustomerGallery(gallery);
+      setTrendingCakeIds(trendingIds);
     } catch (err) {
       console.error('Failed to load store data', err);
     } finally {
@@ -80,12 +100,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('cnc_products_updated', handleDataUpdated);
     window.addEventListener('cnc_categories_updated', handleDataUpdated);
     window.addEventListener('cnc_category_master_updated', handleDataUpdated);
+    window.addEventListener('cnc_homepage_updated', handleDataUpdated);
     window.addEventListener('storage', handleDataUpdated);
 
     return () => {
       window.removeEventListener('cnc_products_updated', handleDataUpdated);
       window.removeEventListener('cnc_categories_updated', handleDataUpdated);
       window.removeEventListener('cnc_category_master_updated', handleDataUpdated);
+      window.removeEventListener('cnc_homepage_updated', handleDataUpdated);
       window.removeEventListener('storage', handleDataUpdated);
     };
   }, [refreshStoreData]);
@@ -104,6 +126,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         mainCategories,
         websiteSettings,
         deliverySettings,
+        homepageBanners,
+        customerGallery,
+        trendingCakeIds,
         loading,
         refreshStoreData,
         featuredProducts,

@@ -9,6 +9,7 @@ import { StorefrontLayout } from './components/StorefrontLayout';
 // Customer Storefront Pages
 import { Home } from './pages/Home';
 import { Shop } from './pages/Shop';
+import { CakesCategory } from './pages/CakesCategory';
 import { ProductDetails } from './pages/ProductDetails';
 import { Cart } from './pages/Cart';
 import { Contact } from './pages/Contact';
@@ -23,6 +24,7 @@ import { AdminCategories } from './pages/admin/AdminCategories';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminDelivery } from './pages/admin/AdminDelivery';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminHomepage } from './pages/admin/AdminHomepage';
 
 export default function App() {
   return (
@@ -36,6 +38,7 @@ export default function App() {
               <Route element={<StorefrontLayout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
+                <Route path="/cakes" element={<CakesCategory />} />
                 <Route path="/product/:slug" element={<ProductDetails />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/contact" element={<Contact />} />
@@ -51,6 +54,17 @@ export default function App() {
                   <ProtectedRoute>
                     <AdminLayout>
                       <AdminDashboard />
+                    </AdminLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin/homepage"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout>
+                      <AdminHomepage />
                     </AdminLayout>
                   </ProtectedRoute>
                 }
